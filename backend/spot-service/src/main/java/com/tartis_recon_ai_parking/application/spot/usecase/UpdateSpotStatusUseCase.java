@@ -27,8 +27,18 @@ public class UpdateSpotStatusUseCase {
         }
 
         // 3. Actualizamos el estado usando el setter estándar (asumiendo que tu compañero lo creó)
-        spot.setStatus(newStatus);
+        switch (newStatus) {
+            case OCCUPIED: spot.occupy(); 
+                break;
+            case AVAILABLE:
+                if (spot.getStatus() == SpotStatus.OCCUPIED) spot.release();
+                else if (spot.getStatus() == SpotStatus.UNAVAILABLE) spot.unblock();
+                    break;
+            case UNAVAILABLE: spot.blockForMaintenance();
+                break;
+        }   
 
         // 4. Persistimos y retornamos
         return spotPersistence.save(spot);
     }
+}
