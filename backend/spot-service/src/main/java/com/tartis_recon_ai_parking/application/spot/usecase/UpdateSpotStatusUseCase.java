@@ -32,3 +32,4 @@ public class UpdateSpotStatusUseCase {
         // 4. Persistimos y retornamos
         return spotPersistence.save(spot);
     }
+}
