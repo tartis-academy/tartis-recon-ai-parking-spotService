@@ -4,6 +4,7 @@ import com.tartis_recon_ai_parking.domain.spot.exception.InvalidSpotException;
 import java.util.Objects;
 import java.util.UUID;
 
+
 public class Spot {
 
     private UUID id;
@@ -92,6 +93,7 @@ public class Spot {
         return id;
     }
 
+
     public void setId(UUID id){
         this.id=id;
     }
@@ -130,4 +132,6 @@ public class Spot {
                 ", status=" + status +
                 '}';
     }
+
 }
+

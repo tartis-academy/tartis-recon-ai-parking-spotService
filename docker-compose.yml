@@ -1,0 +1,44 @@
+# PostgreSQL dedicado de spot-service (database-per-service).
+#
+# pgAdmin y SonarQube NO van aqui: son herramientas compartidas y viven en el
+# compose de la raiz del repo de infraestructura. Este compose solo gestiona la
+# base de datos de este microservicio.
+#
+# Se conecta a la red externa parking-shared para que pgAdmin pueda registrar
+# esta BD. Crear la red una vez con:
+#   docker network create parking-shared
+#
+# Desde pgAdmin el host NO es localhost, es el nombre del contenedor:
+#   host: parking-spot-postgres   port: 5432
+
+services:
+  postgres:
+    image: postgres:15.18-alpine
+    container_name: parking-spot-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${SPOT_DB_USER}
+      POSTGRES_PASSWORD: ${SPOT_DB_PASSWORD}
+      POSTGRES_DB: ${SPOT_DB_NAME}
+    ports:
+      # 5434 en el host: el 5432 es el de por defecto y el 5433 lo usa
+      # vehicle-service. Cada servicio necesita el suyo o chocan.
+      - "${SPOT_DB_PORT:-5434}:5432"
+    volumes:
+      - parking-spot-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      # Mismo usuario y misma BD que arriba: si no coinciden, el healthcheck
+      # comprueba algo distinto de lo que usa el servicio.
+      test: ["CMD-SHELL", "pg_isready -U ${SPOT_DB_USER} -d ${SPOT_DB_NAME}"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - parking-shared
+
+volumes:
+  parking-spot-postgres-data:
+
+networks:
+  parking-shared:
+    external: true

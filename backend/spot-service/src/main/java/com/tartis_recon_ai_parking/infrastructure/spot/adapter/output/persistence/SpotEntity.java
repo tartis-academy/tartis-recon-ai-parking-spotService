@@ -1,5 +1,6 @@
 package com.tartis_recon_ai_parking.infrastructure.spot.adapter.output.persistence;
 
+
 import java.util.UUID;
 
 import com.tartis_recon_ai_parking.domain.spot.SpotStatus;
@@ -36,11 +37,11 @@ public class SpotEntity {
         // Requerido por JPA/Hibernate.
     }
 
-    public UUID getId() {
+    public UUID getuniqueId() {
         return uniqueid;
     }
 
-    public void setId(UUID id) {
+    public void setuniqueId(UUID id) {
         this.uniqueid = id;
     }
 

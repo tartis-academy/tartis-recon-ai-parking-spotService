@@ -1,5 +1,6 @@
 package com.tartis_recon_ai_parking.infrastructure.spot.adapter.output.persistence;
 
+
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
