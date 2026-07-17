@@ -124,4 +124,6 @@ public final class Spot {
                 ", status=" + status +
                 '}';
     }
+
 }
+

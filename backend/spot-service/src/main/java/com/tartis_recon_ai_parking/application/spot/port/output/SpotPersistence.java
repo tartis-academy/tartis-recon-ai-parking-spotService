@@ -5,6 +5,10 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+/**
+ * Puerto de salida para la persistencia de Spot.
+ * Alcance: HU-05 (Gestionar plazas) - CRUD por ID desde el menu Administrador.
+ */
 public interface SpotPersistence {
 
     Spot save(Spot spot);
@@ -12,4 +16,6 @@ public interface SpotPersistence {
     Optional<Spot> findById(UUID id);
 
     List<Spot> findAll();
+
+    boolean existsById(UUID id);
 }
