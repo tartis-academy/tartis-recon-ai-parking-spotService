@@ -1,18 +1,14 @@
 package com.tartis_recon_ai_parking.infrastructure.spot.adapter.output.persistence;
 
-
-import java.util.UUID;
-
 import com.tartis_recon_ai_parking.domain.spot.SpotStatus;
-
+import com.tartis_recon_ai_parking.domain.spot.VehicleType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import java.util.UUID;
 
 /**
  * Entidad JPA que mapea la tabla de plazas en PostgreSQL (Spot DB).
@@ -23,8 +19,11 @@ import jakarta.persistence.Table;
 public class SpotEntity {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private UUID uniqueid;
+    private UUID id;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "type", nullable = false, length = 20)
+    private VehicleType type;
 
     @Column(name = "num_spot", nullable = false)
     private int numSpot;
@@ -37,12 +36,20 @@ public class SpotEntity {
         // Requerido por JPA/Hibernate.
     }
 
-    public UUID getuniqueId() {
-        return uniqueid;
+    public UUID getId() {
+        return id;
     }
 
-    public void setuniqueId(UUID id) {
-        this.uniqueid = id;
+    public void setId(UUID id) {
+        this.id = id;
+    }
+
+    public VehicleType getType() {
+        return type;
+    }
+
+    public void setType(VehicleType type) {
+        this.type = type;
     }
 
     public int getNumSpot() {

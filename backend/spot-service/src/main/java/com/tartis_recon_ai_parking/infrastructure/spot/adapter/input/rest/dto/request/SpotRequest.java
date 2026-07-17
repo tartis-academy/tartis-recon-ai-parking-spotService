@@ -1,56 +1,39 @@
 package com.tartis_recon_ai_parking.infrastructure.spot.adapter.input.rest.dto.request;
 
-import com.tartis_recon_ai_parking.domain.spot.SpotStatus;
+import com.tartis_recon_ai_parking.domain.spot.VehicleType;
 import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
 public class SpotRequest {
 
-    @Min(value = 1, message = "El número de plaza debe ser mayor a 0")
-    private int numSpot;
+    @NotNull(message = "El tipo de plaza es obligatorio")
+    private VehicleType type;
 
-    @NotBlank(message = "El tipo de plaza es obligatorio (ej. COCHE o MOTO)")
-    private String type; 
+    @NotNull(message = "El número de plaza es obligatorio")
+    @Min(value = 1, message = "El número de plaza debe ser mayor que 0")
+    private Integer numSpot;
 
-    // Mantenemos @NotNull porque @NotBlank es solo para Strings
-    @NotNull(message = "El estado de la plaza es obligatorio")
-    private SpotStatus status;
-
-    // 1. Constructor vacío (obligatorio)
     public SpotRequest() {
     }
 
-    // 2. Constructor con parámetros actualizados
-    public SpotRequest(int numSpot, String type, SpotStatus status) {
-        this.numSpot = numSpot;
+    public SpotRequest(VehicleType type, Integer numSpot) {
         this.type = type;
-        this.status = status;
-    }
-
-    // 3. Getters y Setters manuales
-    public int getNumSpot() {
-        return numSpot;
-    }
-
-    public void setNumSpot(int numSpot) {
         this.numSpot = numSpot;
     }
 
-    public String getType() {
+    public VehicleType getType() {
         return type;
     }
 
-    public void setType(String type) {
+    public void setType(VehicleType type) {
         this.type = type;
     }
 
-    // Actualizados para devolver y recibir SpotStatus
-    public SpotStatus getStatus() {
-        return status;
+    public Integer getNumSpot() {
+        return numSpot;
     }
 
-    public void setStatus(SpotStatus status) {
-        this.status = status;
+    public void setNumSpot(Integer numSpot) {
+        this.numSpot = numSpot;
     }
 }

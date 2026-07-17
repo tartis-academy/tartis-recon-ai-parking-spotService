@@ -1,23 +1,20 @@
 package com.tartis_recon_ai_parking.infrastructure.spot.adapter.input.rest;
 
-import org.springframework.stereotype.Component;
-import com.tartis_recon_ai_parking.domain.spot.Spot;
+import com.tartis_recon_ai_parking.application.spot.dto.SpotCreateDTO;
+import com.tartis_recon_ai_parking.application.spot.dto.SpotDTO;
+import com.tartis_recon_ai_parking.infrastructure.spot.adapter.input.rest.dto.request.SpotRequest;
 import com.tartis_recon_ai_parking.infrastructure.spot.adapter.input.rest.dto.response.SpotResponse;
 
-@Component
 public class SpotRestMapper {
 
+    private SpotRestMapper() {
+    }
 
-    public SpotResponse toResponse(Spot spot) {
-        if (spot == null) {
-            return null;
-        }
+    public static SpotCreateDTO toCreateDTO(SpotRequest request) {
+        return new SpotCreateDTO(request.getType(), request.getNumSpot());
+    }
 
-        return new SpotResponse(
-            spot.getId(),
-            spot.getNumSpot(),
-            spot.getType(),
-            spot.getStatus()
-        );
+    public static SpotResponse toResponse(SpotDTO dto) {
+        return new SpotResponse(dto.getId(), dto.getType(), dto.getNumSpot(), dto.getStatus());
     }
 }
