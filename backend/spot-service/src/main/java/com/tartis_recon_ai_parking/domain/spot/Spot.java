@@ -61,6 +61,9 @@ public final class Spot {
         }
         this.status = SpotStatus.AVAILABLE;
     }
+     public boolean isAvailableFor(VehicleType requestedType) {
+        return this.status == SpotStatus.AVAILABLE && this.type == requestedType;
+    }
 
     private void validateId(UUID id) {
         if (id == null) {
@@ -101,7 +104,6 @@ public final class Spot {
     public SpotStatus getStatus() {
         return status;
     }
-
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;

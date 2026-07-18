@@ -1,6 +1,8 @@
 package com.tartis_recon_ai_parking.infrastructure.spot.adapter.output.persistence;
 
 
+import com.tartis_recon_ai_parking.domain.spot.VehicleType;
+import com.tartis_recon_ai_parking.domain.spot.SpotStatus;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -47,4 +49,8 @@ public class SpotPersistenceAdapter implements SpotPersistence {
     public boolean existsById(UUID id) {
         return repository.existsById(id);
     }
+    @Override
+public long countByTypeAndStatus(VehicleType type, SpotStatus status) {
+return repository.countByTypeAndStatus(type, status); 
+}
 }

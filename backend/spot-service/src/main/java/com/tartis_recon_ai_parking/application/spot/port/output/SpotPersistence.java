@@ -4,6 +4,8 @@ import com.tartis_recon_ai_parking.domain.spot.Spot;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import com.tartis_recon_ai_parking.domain.spot.SpotStatus;
+import com.tartis_recon_ai_parking.domain.spot.VehicleType;
 
 /**
  * Puerto de salida para la persistencia de Spot.
@@ -18,4 +20,6 @@ public interface SpotPersistence {
     List<Spot> findAll();
 
     boolean existsById(UUID id);
+
+    long countByTypeAndStatus(VehicleType type, SpotStatus status);
 }
