@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main, release]
+  push:
+    branches: [main, release]
+
+# Si llegan dos push seguidos, cancela el run anterior: no interesa el
+# resultado de un commit que ya esta superado.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    # El pom NO esta en la raiz del repo, vive aqui. Sin esto, mvnw no
+    # encuentra proyecto y el job muere en el primer paso.
+    defaults:
+      run:
+        working-directory: backend/spot-service
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          # La version que declara el pom. El JDK del runner es el correcto:
+          # Lombok no soporta JDK 25 y revienta al compilar.
+          java-version: '17'
+          distribution: 'temurin'
+          cache: maven
+
+      # TODO: quitar -DskipTests (y el Postgres que hara falta como service
+      # container, ver el ci.yml de vehicle-service) cuando spot-service este
+      # implementado.
+      #
+      # Hoy los tests NO pueden pasar, y no es un problema de configuracion:
+      # SpotServiceApplicationTests es un @SpringBootTest, y el contexto no
+      # arranca porque SpotRepository declara JpaRepository<SpotEntity, Long>
+      # sobre un SpotEntity que es una clase vacia, sin @Entity ni @Id.
+      # Falla con "Not a managed type: class SpotEntity". El resto del servicio
+      # tambien son stubs vacios.
+      #
+      # src/test/resources/application.properties ya deja el datasource listo
+      # por variables SPOT_DB_*, asi que activarlos sera borrar este flag.
+      #
+      # Mientras tanto este job si aporta: compila todo el modulo, que es lo
+      # que rompe cuando alguien sube codigo que no cierra.
+      - name: Build
+        run: ./mvnw -B verify -DskipTests

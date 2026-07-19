@@ -1,14 +1,15 @@
 #!/usr/bin/env bash
 #
-# Levanta el PostgreSQL dedicado de spot-service.
+# Levanta el PostgreSQL DEDICADO de spot-service (perfil 'prod', o para
+# levantar este servicio aislado).
 #
-#   ./setup.sh          levanta la BD
+# Para el dia a dia en DEV usa el Postgres UNICO compartido (5 schemas) del
+# repo de vehicle-service: (cd ../tartis-recon-ai-parking-vehicleService && ./setup.sh)
+# Ese trae tambien pgAdmin y SonarQube. Este script de aqui NO es ese flujo.
+#
+#   ./setup.sh          levanta la BD dedicada
 #   ./setup.sh down     para el contenedor (mantiene los datos)
 #   ./setup.sh clean    para el contenedor y BORRA los datos
-#
-# pgAdmin y SonarQube NO se levantan aqui: son herramientas compartidas y viven
-# en el compose del repo de vehicle-service. Este script solo gestiona la BD de
-# spot-service, pero la conecta a la red parking-shared para que pgAdmin la vea.
 #
 set -euo pipefail
 
