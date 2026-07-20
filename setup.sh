@@ -4,7 +4,7 @@
 # levantar este servicio aislado).
 #
 # Para el dia a dia en DEV usa el Postgres UNICO compartido (5 schemas) del
-# repo de vehicle-service: (cd ../tartis-recon-ai-parking-vehicleService && ./setup.sh)
+# repo de infra: (cd ../tartis-recon-ia-parking-infra && ./setup.sh)
 # Ese trae tambien pgAdmin y SonarQube. Este script de aqui NO es ese flujo.
 #
 #   ./setup.sh          levanta la BD dedicada
