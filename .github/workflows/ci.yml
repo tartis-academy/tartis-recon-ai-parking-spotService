@@ -2,9 +2,9 @@ name: CI
 
 on:
   pull_request:
-    branches: [main, release]
+    branches: [main, release, release123]
   push:
-    branches: [main, release]
+    branches: [main, release, release123]
 
 # Si llegan dos push seguidos, cancela el run anterior: no interesa el
 # resultado de un commit que ya esta superado.
