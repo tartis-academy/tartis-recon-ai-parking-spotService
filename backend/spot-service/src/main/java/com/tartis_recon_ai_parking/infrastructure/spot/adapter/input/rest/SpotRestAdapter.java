@@ -14,6 +14,12 @@ import jakarta.validation.Valid;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import java.util.UUID;
+
+import com.tartis_recon_ai_parking.application.spot.dto.SpotDTO;
+import com.tartis_recon_ai_parking.application.spot.usecase.CreateSpotUseCase;
+import com.tartis_recon_ai_parking.application.spot.usecase.GetSpotUseCase;
+import com.tartis_recon_ai_parking.infrastructure.spot.adapter.input.rest.dto.response.SpotResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -25,6 +31,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.tartis_recon_ai_parking.application.spot.usecase.ReleaseSpotUseCase;
+
 @RestController
 @RequestMapping("/v1/spots")
 public class SpotRestAdapter {
@@ -33,15 +41,18 @@ public class SpotRestAdapter {
     private final GetSpotUseCase getSpotUseCase;
     private final UpdateSpotUseCase updateSpotUseCase;
     private final UpdateSpotStatusUseCase updateSpotStatusUseCase;
+    private final ReleaseSpotUseCase releaseSpotUseCase;
 
     public SpotRestAdapter(CreateSpotUseCase createSpotUseCase,
                             GetSpotUseCase getSpotUseCase,
                             UpdateSpotUseCase updateSpotUseCase,
-                            UpdateSpotStatusUseCase updateSpotStatusUseCase) {
+                            UpdateSpotStatusUseCase updateSpotStatusUseCase,
+                            ReleaseSpotUseCase releaseSpotUseCase) {
         this.createSpotUseCase = createSpotUseCase;
         this.getSpotUseCase = getSpotUseCase;
         this.updateSpotUseCase = updateSpotUseCase;
         this.updateSpotStatusUseCase = updateSpotStatusUseCase;
+        this.releaseSpotUseCase = releaseSpotUseCase;
     }
 
     @PostMapping
@@ -75,4 +86,10 @@ public class SpotRestAdapter {
         Spot updated = updateSpotStatusUseCase.execute(id, request.getStatus());
         return ResponseEntity.ok(SpotRestMapper.toResponse(SpotDTOFactory.from(updated)));
     }
+
+@PostMapping("/{id}/release")
+    public ResponseEntity<SpotResponse> release(@PathVariable UUID id) {
+        SpotDTO released = releaseSpotUseCase.execute(id);
+        return ResponseEntity.ok(SpotRestMapper.toResponse(released));
+}
 }
