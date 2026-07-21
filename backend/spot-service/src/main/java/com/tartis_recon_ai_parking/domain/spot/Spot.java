@@ -10,8 +10,8 @@ public final class Spot {
     private SpotStatus status;
 
     //Creates a new spot with its own ID.
-    public static Spot create(VehicleType type, SpotStatus status){
-        return new Spot(UUID.randomUUID(), type, status);
+    public static Spot create(VehicleType type){
+        return new Spot(UUID.randomUUID(), type, SpotStatus.AVAILABLE);
     }
 
     //Create a new spot with external data.
