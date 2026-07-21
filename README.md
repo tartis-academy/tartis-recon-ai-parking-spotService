@@ -49,3 +49,4 @@ Cada microservicio usa un puerto distinto en el host para no chocar: vehicle 543
 El puerto 5434 ya está en uso → cámbialo en el `.env`. El puerto del host es configurable; el interno no.
 
 Cambias el `.env` y no se entera → `docker compose up -d --force-recreate`. Si tocas usuario o contraseña, además `docker compose down -v`: esas credenciales solo se aplican al crear la BD por primera vez.
+>>>>>>> main
