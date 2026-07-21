@@ -33,7 +33,7 @@ public class SpotRestAdapter {
     public ResponseEntity<SpotResponse> updateStatus(@PathVariable UUID id,
                                                        @RequestBody SpotRequest request) {
                                                         
-        SpotCreateDTO create = new SpotCreateDTO(request.getType(), request.getNumSpot()); 
+        SpotCreateDTO create = new SpotCreateDTO(request.getType()); 
         SpotDTO updatedSpot = updateSpotStatusUseCase.execute(id, create);
         SpotResponse response = spotRestMapper.toResponse(updatedSpot);
         return ResponseEntity.status(HttpStatus.OK).body(response);
