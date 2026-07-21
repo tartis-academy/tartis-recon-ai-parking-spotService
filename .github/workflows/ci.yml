@@ -1,0 +1,68 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main, release, release123]
+  push:
+    branches: [main, release, release123]
+
+# Si llegan dos push seguidos, cancela el run anterior: no interesa el
+# resultado de un commit que ya esta superado.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    # El pom NO esta en la raiz del repo, vive aqui. Sin esto, mvnw no
+    # encuentra proyecto y el job muere en el primer paso.
+    defaults:
+      run:
+        working-directory: backend/spot-service
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Historial completo: SonarCloud lo necesita para calcular el
+          # "new code" (blame por commit) al evaluar el quality gate.
+          fetch-depth: 0
+
+      - uses: actions/setup-java@v4
+        with:
+          # El pom declara java.version=17 (bytecode target via
+          # maven.compiler.release), pero el JDK del runner puede ser mas
+          # nuevo: Lombok 1.18.30 compila bien con JDK 21 (no soporta JDK 25).
+          # SonarQube Cloud dejo de aceptar analisis corridos con JDK 17, asi
+          # que el runner tiene que ser 21+ para que el paso de sonar:sonar
+          # no falle con "The version of Java (17) used to run this analysis
+          # is deprecated".
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Build
+        run: ./mvnw -B verify
+
+      - name: Cache paquetes de SonarCloud
+        uses: actions/cache@v4
+        with:
+          path: ~/.sonar/cache
+          key: ${{ runner.os }}-sonar
+          restore-keys: ${{ runner.os }}-sonar
+
+      # Requiere el secret SONAR_TOKEN del repo.
+      - name: Analisis SonarCloud (quality gate)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: >
+          ./mvnw -B sonar:sonar
+          -Dsonar.projectKey=1dd0rv_tartis-recon-ai-parking-spotService
+          -Dsonar.organization=1dd0rv
+          -Dsonar.host.url=https://sonarcloud.io
+          -Dsonar.qualitygate.wait=true

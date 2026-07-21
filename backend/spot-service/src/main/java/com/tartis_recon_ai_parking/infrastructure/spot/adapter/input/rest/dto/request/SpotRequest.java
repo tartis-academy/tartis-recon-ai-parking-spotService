@@ -5,14 +5,12 @@ import com.tartis_recon_ai_parking.domain.spot.VehicleType;
 public class SpotRequest {
 
     private VehicleType type;
-    private Integer numSpot;
 
     public SpotRequest() {
     }
 
-    public SpotRequest(VehicleType type, Integer numSpot) {
+    public SpotRequest(VehicleType type) {
         this.type = type;
-        this.numSpot = numSpot;
     }
 
     public VehicleType getType() {
@@ -23,11 +21,4 @@ public class SpotRequest {
         this.type = type;
     }
 
-    public Integer getNumSpot() {
-        return numSpot;
-    }
-
-    public void setNumSpot(Integer numSpot) {
-        this.numSpot = numSpot;
-    }
 }

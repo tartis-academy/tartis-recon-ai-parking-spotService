@@ -20,7 +20,7 @@ public class UpdateSpotUseCase {
         Spot existing = spotPersistence.findById(id)
                 .orElseThrow(() -> new SpotNotFoundException("No existe una plaza con id " + id));
 
-        Spot updated = new Spot(id, updateDTO.getType(), updateDTO.getNumSpot(), existing.getStatus());
+        Spot updated = Spot.reconstruct(id, updateDTO.getType(), existing.getStatus());
         Spot saved = spotPersistence.save(updated);
         return SpotDTOFactory.from(saved);
     }
