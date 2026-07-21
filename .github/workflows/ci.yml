@@ -34,9 +34,14 @@ jobs:
 
       - uses: actions/setup-java@v4
         with:
-          # La version que declara el pom. El JDK del runner es el correcto:
-          # Lombok no soporta JDK 25 y revienta al compilar.
-          java-version: '17'
+          # El pom declara java.version=17 (bytecode target via
+          # maven.compiler.release), pero el JDK del runner puede ser mas
+          # nuevo: Lombok 1.18.30 compila bien con JDK 21 (no soporta JDK 25).
+          # SonarQube Cloud dejo de aceptar analisis corridos con JDK 17, asi
+          # que el runner tiene que ser 21+ para que el paso de sonar:sonar
+          # no falle con "The version of Java (17) used to run this analysis
+          # is deprecated".
+          java-version: '21'
           distribution: 'temurin'
           cache: maven
 
