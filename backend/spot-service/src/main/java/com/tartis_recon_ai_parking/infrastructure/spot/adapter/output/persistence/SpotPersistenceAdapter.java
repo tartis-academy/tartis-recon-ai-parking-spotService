@@ -53,4 +53,16 @@ public class SpotPersistenceAdapter implements SpotPersistence {
 public long countByTypeAndStatus(VehicleType type, SpotStatus status) {
 return repository.countByTypeAndStatus(type, status); 
 }
+
+@Override
+    @Transactional
+    public Optional<Spot> findAndOccupyAvailableSpot(VehicleType type) {
+        return repository.findFirstAvailable(type)
+                .map(entity -> {
+                    Spot spot = mapper.toDomain(entity);
+                    spot.occupy();
+                    SpotEntity updated = repository.save(mapper.toEntity(spot));
+                    return mapper.toDomain(updated);
+                });
+    }
 }

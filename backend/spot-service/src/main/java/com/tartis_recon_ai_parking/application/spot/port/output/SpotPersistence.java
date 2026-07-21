@@ -23,4 +23,6 @@ public interface SpotPersistence {
     boolean existsById(UUID id);
 
     long countByTypeAndStatus(VehicleType type, SpotStatus status);
+
+    Optional<Spot> findAndOccupyAvailableSpot(VehicleType type);
 }
