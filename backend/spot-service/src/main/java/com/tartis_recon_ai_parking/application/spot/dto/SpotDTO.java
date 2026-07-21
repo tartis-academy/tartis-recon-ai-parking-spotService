@@ -8,13 +8,11 @@ public class SpotDTO {
 
     private final UUID id;
     private final VehicleType type;
-    private final Integer numSpot;
     private final SpotStatus status;
 
-    public SpotDTO(UUID id, VehicleType type, Integer numSpot, SpotStatus status) {
+    public SpotDTO(UUID id, VehicleType type, SpotStatus status) {
         this.id = id;
         this.type = type;
-        this.numSpot = numSpot;
         this.status = status;
     }
 
@@ -24,10 +22,6 @@ public class SpotDTO {
 
     public VehicleType getType() {
         return type;
-    }
-
-    public Integer getNumSpot() {
-        return numSpot;
     }
 
     public SpotStatus getStatus() {
