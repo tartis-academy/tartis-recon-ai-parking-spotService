@@ -51,32 +51,32 @@ public class CreateSpotUseCaseTests {
         useCase = new CreateSpotUseCase(spotPersistence);
     }
 
-    // Test: execute() debe crear una nueva plaza AVAILABLE del tipo indicado
-    // en el DTO, guardarla mediante SpotPersistence y devolver un SpotDTO
-    // con los mismos datos que la plaza guardada.
-    // Resultado esperado: se invoca save() una vez y el DTO devuelto refleja
-    // el tipo y el estado AVAILABLE de la plaza creada.
     @Test
     void execute_deberiaCrearYGuardarPlazaDisponible() {
+        // QUE HACE:
+        // - Crea un DTO con los datos para una nueva plaza.
+        // - Configura el mock de la persistencia para simular el guardado.
+        // - Ejecuta el método execute del caso de uso.
         SpotCreateDTO createDTO = new SpotCreateDTO(VehicleType.CAR);
 
         when(spotPersistence.save(any(Spot.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         SpotDTO result = useCase.execute(createDTO);
 
+        // QUE DEBERIA HACER:
+        // Debe verificar que se invocó save() en persistencia exactamente una vez.
+        // El DTO resultante debe reflejar el tipo y el estado de la plaza recién creada (AVAILABLE).
         verify(spotPersistence, times(1)).save(any(Spot.class));
         assertNotNull(result.getId());
         assertEquals(VehicleType.CAR, result.getType());
         assertEquals(SpotStatus.AVAILABLE, result.getStatus());
     }
 
-    // Test: execute() debe pasar a spotPersistence.save() una instancia de Spot
-    // construida con Spot.create(), es decir, con estado AVAILABLE y un id
-    // generado automáticamente, y no una plaza con otro estado.
-    // Resultado esperado: el Spot capturado en save() tiene status AVAILABLE
-    // y un id no nulo.
     @Test
     void execute_deberiaConstruirSpotConEstadoAvailableAntesDeGuardar() {
+        // QUE HACE:
+        // - Prepara un DTO y un ArgumentCaptor para interceptar el objeto guardado.
+        // - Ejecuta la creación de la plaza.
         SpotCreateDTO createDTO = new SpotCreateDTO(VehicleType.MOTORBIKE);
         ArgumentCaptor<Spot> spotCaptor = ArgumentCaptor.forClass(Spot.class);
 
@@ -84,6 +84,8 @@ public class CreateSpotUseCaseTests {
 
         useCase.execute(createDTO);
 
+        // QUE DEBERIA HACER:
+        // Debe asegurar que la entidad que se pasa a guardar tenga estado AVAILABLE y un ID generado.
         verify(spotPersistence).save(spotCaptor.capture());
         Spot captured = spotCaptor.getValue();
         assertNotNull(captured.getId());
@@ -91,13 +93,12 @@ public class CreateSpotUseCaseTests {
         assertEquals(SpotStatus.AVAILABLE, captured.getStatus());
     }
 
-    // Test: el resultado de execute() debe basarse en la plaza devuelta por
-    // spotPersistence.save() (por ejemplo, si la persistencia devolviera una
-    // plaza con datos distintos a la enviada, el DTO reflejaría esos datos).
-    // Resultado esperado: el SpotDTO devuelto coincide con la plaza "saved",
-    // no con la que se pasó a save().
     @Test
     void execute_deberiaDevolverDtoBasadoEnLaPlazaGuardadaDevueltaPorPersistencia() {
+        // QUE HACE:
+        // - Prepara un DTO inicial y una plaza ya persistida con estado distinto.
+        // - Configura el mock para devolver la plaza simulada al guardar.
+        // - Ejecuta el método execute.
         SpotCreateDTO createDTO = new SpotCreateDTO(VehicleType.CAR);
         Spot persistedSpot = Spot.create(VehicleType.CAR);
         persistedSpot.occupy();
@@ -106,14 +107,17 @@ public class CreateSpotUseCaseTests {
 
         SpotDTO result = useCase.execute(createDTO);
 
+        // QUE DEBERIA HACER:
+        // Debe devolver un DTO cuyos datos provengan del objeto devuelto por save(), no del enviado.
         assertEquals(persistedSpot.getId(), result.getId());
         assertEquals(SpotStatus.OCCUPIED, result.getStatus());
     }
 
-    // Test: execute() con DTO con tipo nulo debe propagar InvalidSpotException
-    // Resultado esperado: se lanza InvalidSpotException y no se interactúa con la persistencia.
     @Test
     void execute_deberiaLanzarExcepcionConTipoNulo() {
+        // QUE HACE:
+        // - Prepara un DTO con un tipo nulo.
+        // - Intenta ejecutar la creación.
         SpotCreateDTO createDTO = new SpotCreateDTO(null);
         
         org.junit.jupiter.api.Assertions.assertThrows(
@@ -121,6 +125,8 @@ public class CreateSpotUseCaseTests {
             () -> useCase.execute(createDTO)
         );
 
+        // QUE DEBERIA HACER:
+        // Debe lanzar InvalidSpotException y asegurar que nunca se llamó a la persistencia.
         verify(spotPersistence, never()).save(any(Spot.class));
     }
 }

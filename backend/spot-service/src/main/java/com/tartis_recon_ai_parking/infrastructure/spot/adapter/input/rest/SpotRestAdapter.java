@@ -7,6 +7,8 @@ import java.util.stream.Collectors;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -35,20 +37,33 @@ public class SpotRestAdapter {
     private final UpdateSpotUseCase updateSpotUseCase;
     private final OccupySpotUseCase occupySpotUseCase;
     private final ReleaseSpotUseCase releaseSpotUseCase;
+    private final UpdateSpotUseCase updateSpotStatusUseCase;
     private final SpotRestMapper spotRestMapper;
 
     public SpotRestAdapter(CreateSpotUseCase createSpotUseCase,
-                           GetSpotUseCase getSpotUseCase,
-                           UpdateSpotUseCase updateSpotUseCase,
-                           OccupySpotUseCase occupySpotUseCase,
-                           ReleaseSpotUseCase releaseSpotUseCase,
-                           SpotRestMapper spotRestMapper) {
+            GetSpotUseCase getSpotUseCase,
+            UpdateSpotUseCase updateSpotUseCase,
+            OccupySpotUseCase occupySpotUseCase,
+            ReleaseSpotUseCase releaseSpotUseCase,
+            UpdateSpotUseCase updateSpotStatusUseCase,
+            SpotRestMapper spotRestMapper) {
         this.createSpotUseCase = createSpotUseCase;
         this.getSpotUseCase = getSpotUseCase;
         this.updateSpotUseCase = updateSpotUseCase;
         this.occupySpotUseCase = occupySpotUseCase;
         this.releaseSpotUseCase = releaseSpotUseCase;
+        this.updateSpotStatusUseCase = updateSpotStatusUseCase;
         this.spotRestMapper = spotRestMapper;
+    }
+
+    @PatchMapping("/{id}/status")
+    public ResponseEntity<SpotResponse> updateStatus(@PathVariable UUID id,
+            @RequestBody SpotRequest request) {
+
+        SpotCreateDTO create = new SpotCreateDTO(request.getType());
+        SpotDTO updatedSpot = updateSpotStatusUseCase.execute(id, create);
+        SpotResponse response = spotRestMapper.toResponse(updatedSpot);
+        return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 
     @PostMapping
@@ -82,7 +97,8 @@ public class SpotRestAdapter {
     @PostMapping("/occupy")
     public ResponseEntity<SpotResponse> occupy(@Valid @RequestBody SpotRequest request) {
         com.tartis_recon_ai_parking.domain.spot.Spot occupied = occupySpotUseCase.execute(request.getType());
-        return ResponseEntity.ok(spotRestMapper.toResponse(com.tartis_recon_ai_parking.application.spot.factory.SpotDTOFactory.from(occupied)));
+        return ResponseEntity.ok(spotRestMapper
+                .toResponse(com.tartis_recon_ai_parking.application.spot.factory.SpotDTOFactory.from(occupied)));
     }
 
     @PostMapping("/{id}/release")

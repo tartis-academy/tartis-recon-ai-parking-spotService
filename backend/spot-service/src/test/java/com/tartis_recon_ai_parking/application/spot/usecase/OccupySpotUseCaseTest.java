@@ -33,17 +33,19 @@ class OccupySpotUseCaseTest {
     @Test
     @DisplayName("Debe ocupar la plaza si el puerto de persistencia encuentra una disponible")
     void execute_WhenSpotAvailable_ShouldReturnOccupiedSpot() {
-        // Arrange
+        // QUE HACE:
+        // - Simula la obtención exitosa de una plaza disponible desde el repositorio, devolviendola con estado ocupado.
+        // - Ejecuta el método execute.
         UUID spotId = UUID.randomUUID();
         Spot occupiedSpot = Spot.reconstruct(spotId, VehicleType.CAR, SpotStatus.OCCUPIED);
 
         when(spotPersistence.findAndOccupyAvailableSpot(VehicleType.CAR))
                 .thenReturn(Optional.of(occupiedSpot));
 
-        // Act
         Spot result = occupySpotUseCase.execute(VehicleType.CAR);
 
-        // Assert
+        // QUE DEBERIA HACER:
+        // Debe retornar la plaza en estado OCCUPIED.
         assertThat(result).isNotNull();
         assertThat(result.getStatus()).isEqualTo(SpotStatus.OCCUPIED);
     }
@@ -51,11 +53,14 @@ class OccupySpotUseCaseTest {
     @Test
     @DisplayName("Debe lanzar NoAvailableSpotException si no hay plazas libres")
     void execute_WhenNoSpotAvailable_ShouldThrowException() {
-        // Arrange
+        // QUE HACE:
+        // - Simula la búsqueda en persistencia devolviendo vacío (sin plazas disponibles).
+        // - Ejecuta el método execute.
         when(spotPersistence.findAndOccupyAvailableSpot(VehicleType.CAR))
                 .thenReturn(Optional.empty());
 
-        // Act & Assert
+        // QUE DEBERIA HACER:
+        // Debe lanzar una excepcion indicando que no hay plazas.
         assertThatThrownBy(() -> occupySpotUseCase.execute(VehicleType.CAR))
                 .isInstanceOf(NoAvailableSpotException.class);
     }
