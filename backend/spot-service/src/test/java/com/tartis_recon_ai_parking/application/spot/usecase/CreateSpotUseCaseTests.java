@@ -1,5 +1,8 @@
 package com.tartis_recon_ai_parking.application.spot.usecase;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+
 import com.tartis_recon_ai_parking.application.spot.dto.SpotCreateDTO;
 import com.tartis_recon_ai_parking.application.spot.dto.SpotDTO;
 import com.tartis_recon_ai_parking.application.spot.port.output.SpotPersistence;
@@ -14,7 +17,6 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
@@ -106,5 +108,19 @@ public class CreateSpotUseCaseTests {
 
         assertEquals(persistedSpot.getId(), result.getId());
         assertEquals(SpotStatus.OCCUPIED, result.getStatus());
+    }
+
+    // Test: execute() con DTO con tipo nulo debe propagar InvalidSpotException
+    // Resultado esperado: se lanza InvalidSpotException y no se interactúa con la persistencia.
+    @Test
+    void execute_deberiaLanzarExcepcionConTipoNulo() {
+        SpotCreateDTO createDTO = new SpotCreateDTO(null);
+        
+        org.junit.jupiter.api.Assertions.assertThrows(
+            com.tartis_recon_ai_parking.domain.spot.exception.InvalidSpotException.class, 
+            () -> useCase.execute(createDTO)
+        );
+
+        verify(spotPersistence, never()).save(any(Spot.class));
     }
 }
