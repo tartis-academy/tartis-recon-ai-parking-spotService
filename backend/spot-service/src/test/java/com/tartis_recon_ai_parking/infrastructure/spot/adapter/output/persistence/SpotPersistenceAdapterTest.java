@@ -190,4 +190,60 @@ class SpotPersistenceAdapterTest {
         assertThat(count).isEqualTo(5L);
         verify(spotRepository, times(1)).countByTypeAndStatus(VehicleType.CAR, SpotStatus.AVAILABLE);
     }
+    @Test
+    @DisplayName("Debe encontrar una plaza disponible, ocuparla y guardarla exitosamente")
+    void shouldFindAndOccupyAvailableSpotSuccessfully() {
+        // QUE HACE:
+        // - Genera un ID aleatorio e instancias de entidad y dominio para plaza disponible y ocupada.
+        // - Configura el repositorio para retornar la entidad disponible.
+        // - Configura el mapper para las traducciones entidad-dominio.
+        // - Configura el repositorio para guardar la entidad ocupada.
+        // - Ejecuta el metodo findAndOccupyAvailableSpot.
+        UUID id = UUID.randomUUID();
+        SpotEntity availableEntity = new SpotEntity();
+        availableEntity.setId(id);
+        availableEntity.setType(VehicleType.CAR);
+        availableEntity.setStatus(SpotStatus.AVAILABLE);
+
+        Spot availableSpot = Spot.reconstruct(id, VehicleType.CAR, SpotStatus.AVAILABLE);
+        SpotEntity occupiedEntity = new SpotEntity();
+        occupiedEntity.setId(id);
+        occupiedEntity.setType(VehicleType.CAR);
+        occupiedEntity.setStatus(SpotStatus.OCCUPIED);
+        
+        Spot occupiedSpot = Spot.reconstruct(id, VehicleType.CAR, SpotStatus.OCCUPIED);
+
+        when(spotRepository.findFirstAvailable(VehicleType.CAR)).thenReturn(Optional.of(availableEntity));
+        when(spotPersistenceMapper.toDomain(availableEntity)).thenReturn(availableSpot);
+        when(spotPersistenceMapper.toEntity(any(Spot.class))).thenReturn(occupiedEntity);
+        when(spotRepository.save(occupiedEntity)).thenReturn(occupiedEntity);
+        when(spotPersistenceMapper.toDomain(occupiedEntity)).thenReturn(occupiedSpot);
+
+        Optional<Spot> result = spotPersistenceAdapter.findAndOccupyAvailableSpot(VehicleType.CAR);
+
+        // QUE DEBERIA HACER:
+        // Debe retornar un Optional con la plaza modificada a estado OCCUPIED.
+        // Debe asegurar que se llamo al metodo de busqueda y guardado.
+        assertThat(result).isPresent();
+        assertThat(result.get().getStatus()).isEqualTo(SpotStatus.OCCUPIED);
+        verify(spotRepository).findFirstAvailable(VehicleType.CAR);
+        verify(spotRepository).save(occupiedEntity);
+    }
+
+    @Test
+    @DisplayName("Debe retornar vacio si no encuentra plazas disponibles para ocupar")
+    void shouldReturnEmptyWhenNoAvailableSpotToOccupy() {
+        // QUE HACE:
+        // - Configura el mock del repositorio para indicar que no hay plazas libres.
+        // - Ejecuta findAndOccupyAvailableSpot.
+        when(spotRepository.findFirstAvailable(VehicleType.CAR)).thenReturn(Optional.empty());
+
+        Optional<Spot> result = spotPersistenceAdapter.findAndOccupyAvailableSpot(VehicleType.CAR);
+
+        // QUE DEBERIA HACER:
+        // Debe retornar un Optional vacio y verificar que nunca se invoco el metodo save en BD.
+        assertThat(result).isEmpty();
+        verify(spotRepository).findFirstAvailable(VehicleType.CAR);
+        verify(spotRepository, never()).save(any());
+    }
 }

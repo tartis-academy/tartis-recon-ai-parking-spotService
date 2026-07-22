@@ -43,39 +43,46 @@ public class GetSpotUseCaseTests {
 
     // =============  getById  ============= //
 
-    // Test: getById(id) cuando la plaza existe debe devolver un SpotDTO
-    // con los mismos datos (id, tipo y estado) que la plaza encontrada.
-    // Resultado esperado: el DTO devuelto refleja exactamente los datos de la plaza.
     @Test
     void getById_conPlazaExistente_deberiaDevolverDtoCorrespondiente() {
+        // QUE HACE:
+        // - Crea una plaza de dominio de prueba.
+        // - Configura el mock de la persistencia para devolverla al buscar por ID.
+        // - Ejecuta el método getById del caso de uso.
         Spot spot = Spot.create(VehicleType.CAR);
 
         when(spotPersistence.findById(spot.getId())).thenReturn(Optional.of(spot));
 
         SpotDTO result = useCase.getById(spot.getId());
 
+        // QUE DEBERIA HACER:
+        // Debe devolver un SpotDTO que contenga exactamente los mismos datos de la plaza devuelta por la persistencia.
         assertEquals(spot.getId(), result.getId());
         assertEquals(spot.getType(), result.getType());
         assertEquals(spot.getStatus(), result.getStatus());
     }
 
-    // Test: getById(id) cuando no existe ninguna plaza con ese id debe lanzar
-    // SpotNotFoundException en lugar de devolver null o un DTO vacío.
-    // Resultado esperado: se lanza SpotNotFoundException.
     @Test
     void getById_conPlazaInexistente_deberiaLanzarSpotNotFoundException() {
+        // QUE HACE:
+        // - Genera un ID aleatorio.
+        // - Configura el mock de la persistencia para devolver Optional vacío.
+        // - Intenta obtener la plaza mediante getById.
         UUID missingId = UUID.randomUUID();
 
         when(spotPersistence.findById(missingId)).thenReturn(Optional.empty());
 
+        // QUE DEBERIA HACER:
+        // Debe lanzar una excepcion SpotNotFoundException indicando que la plaza no existe.
         assertThrows(SpotNotFoundException.class, () -> useCase.getById(missingId));
     }
 
-    // Test: getById(id) debe consultar spotPersistence.findById() exactamente
-    // con el id recibido, sin transformarlo.
-    // Resultado esperado: findById() se invoca una única vez con el id exacto.
     @Test
     void getById_deberiaConsultarPersistenciaConElIdExacto() {
+        // QUE HACE:
+        // - Genera un ID aleatorio y crea una plaza con él.
+        // - Configura la persistencia para que devuelva la plaza al buscar con ese ID exacto.
+        // - Llama al método getById.
         UUID id = UUID.randomUUID();
         Spot spot = Spot.reconstruct(id, VehicleType.CAR, SpotStatus.AVAILABLE);
 
@@ -83,17 +90,19 @@ public class GetSpotUseCaseTests {
 
         useCase.getById(id);
 
+        // QUE DEBERIA HACER:
+        // Debe consultar el repositorio de persistencia exactamente una vez utilizando el mismo ID recibido por parametro.
         verify(spotPersistence, times(1)).findById(id);
     }
 
     // =============  getAll  ============= //
 
-    // Test: getAll() debe devolver una lista de SpotDTO con el mismo tamaño
-    // y datos que las plazas devueltas por spotPersistence.findAll().
-    // Resultado esperado: la lista devuelta tiene el mismo tamaño que la fuente
-    // y cada DTO corresponde a la plaza en la misma posición.
     @Test
     void getAll_conVariasPlazas_deberiaDevolverListaDeDtosCorrespondiente() {
+        // QUE HACE:
+        // - Crea varias plazas de dominio y las agrupa en una lista.
+        // - Configura la persistencia para devolver dicha lista al llamar a findAll.
+        // - Llama al método getAll del caso de uso.
         Spot spot1 = Spot.create(VehicleType.CAR);
         Spot spot2 = Spot.create(VehicleType.MOTORBIKE);
 
@@ -101,20 +110,24 @@ public class GetSpotUseCaseTests {
 
         List<SpotDTO> result = useCase.getAll();
 
+        // QUE DEBERIA HACER:
+        // Debe retornar una lista de DTOs mapeada a partir de las entidades, respetando el tamaño y orden original.
         assertEquals(2, result.size());
         assertEquals(spot1.getId(), result.get(0).getId());
         assertEquals(spot2.getId(), result.get(1).getId());
     }
 
-    // Test: getAll() cuando no hay plazas registradas debe devolver una lista
-    // vacía, sin lanzar excepciones.
-    // Resultado esperado: la lista devuelta está vacía (size == 0).
     @Test
     void getAll_sinPlazas_deberiaDevolverListaVacia() {
+        // QUE HACE:
+        // - Configura la persistencia para devolver una lista vacía.
+        // - Invoca getAll del caso de uso.
         when(spotPersistence.findAll()).thenReturn(List.of());
 
         List<SpotDTO> result = useCase.getAll();
 
+        // QUE DEBERIA HACER:
+        // Debe retornar una lista vacía sin producir errores.
         assertNotNull(result);
         assertTrue(result.isEmpty());
     }
