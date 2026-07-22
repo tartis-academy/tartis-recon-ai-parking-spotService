@@ -1,5 +1,8 @@
 package com.tartis_recon_ai_parking.application.spot.usecase;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
 import com.tartis_recon_ai_parking.application.spot.dto.SpotCreateDTO;
 import com.tartis_recon_ai_parking.application.spot.dto.SpotDTO;
 import com.tartis_recon_ai_parking.application.spot.port.output.SpotPersistence;
@@ -18,7 +21,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.Optional;
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
@@ -112,5 +114,23 @@ public class UpdateSpotUseCaseTests {
         SpotDTO result = useCase.execute(id, updateDTO);
 
         assertEquals(SpotStatus.UNAVAILABLE, result.getStatus());
+    }
+
+    // Test: execute(id, updateDTO) con DTO con tipo nulo debe propagar InvalidSpotException
+    // Resultado esperado: se lanza InvalidSpotException y no se invoca save().
+    @Test
+    void execute_conTipoNulo_deberiaLanzarExcepcion() {
+        UUID id = UUID.randomUUID();
+        Spot existing = Spot.reconstruct(id, VehicleType.CAR, SpotStatus.AVAILABLE);
+        SpotCreateDTO updateDTO = new SpotCreateDTO(null);
+
+        when(spotPersistence.findById(id)).thenReturn(Optional.of(existing));
+
+        org.junit.jupiter.api.Assertions.assertThrows(
+            com.tartis_recon_ai_parking.domain.spot.exception.InvalidSpotException.class, 
+            () -> useCase.execute(id, updateDTO)
+        );
+
+        verify(spotPersistence, never()).save(any(Spot.class));
     }
 }

@@ -1,5 +1,9 @@
 package com.tartis_recon_ai_parking.domain.spot;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -7,7 +11,6 @@ import com.tartis_recon_ai_parking.domain.spot.exception.InvalidSpotException;
 
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Tests unitarios para la clase Spot.

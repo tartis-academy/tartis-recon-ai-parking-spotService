@@ -1,5 +1,6 @@
 package com.tartis_recon_ai_parking.infrastructure.spot.adapter.output.persistence;
 
+
 import com.tartis_recon_ai_parking.domain.spot.Spot;
 import com.tartis_recon_ai_parking.domain.spot.SpotStatus;
 import com.tartis_recon_ai_parking.domain.spot.VehicleType;
