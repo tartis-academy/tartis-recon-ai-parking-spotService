@@ -17,7 +17,6 @@ public class SpotRestMapper {
         return new SpotResponse(
             spot.getId(),
             spot.getType(),
-            spot.getNumSpot(),
             spot.getStatus()
         );
     }

@@ -9,6 +9,6 @@ public class SpotDTOFactory {
     }
 
     public static SpotDTO from(Spot spot) {
-        return new SpotDTO(spot.getId(), spot.getType(), spot.getNumSpot(), spot.getStatus());
+        return new SpotDTO(spot.getId(), spot.getType(), spot.getStatus());
     }
 }
