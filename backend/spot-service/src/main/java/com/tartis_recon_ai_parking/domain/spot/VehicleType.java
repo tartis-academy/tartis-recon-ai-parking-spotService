@@ -5,3 +5,4 @@ public enum VehicleType {
     CAR_PMR,
     MOTORBIKE
 }
+

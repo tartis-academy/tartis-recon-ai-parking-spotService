@@ -66,6 +66,9 @@ public final class Spot {
         }
         this.status = SpotStatus.AVAILABLE;
     }
+     public boolean isAvailableFor(VehicleType requestedType) {
+        return this.status == SpotStatus.AVAILABLE && this.type == requestedType;
+    }
 
 
     // =============  GETTERS  ============= //
