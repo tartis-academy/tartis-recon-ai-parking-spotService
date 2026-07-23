@@ -1,4 +1,4 @@
-# tartis-recon-ai-parking — spot-service
+
 
 ## Levantar el entorno local
 
@@ -38,9 +38,9 @@ docker compose ps
 | BD desde tu máquina | `localhost:5434` · `spot_db` · `spot_user` |
 | BD desde pgAdmin | `parking-spot-postgres:5432` (nombre del contenedor, puerto interno) |
 
-**pgAdmin y SonarQube no se levantan desde este repo**: son herramientas compartidas y viven en el compose de `tartis-recon-ai-parking-vehicleService`. Levántalas desde allí y desde pgAdmin registra esta BD con los datos de la tabla.
+**pgAdmin y SonarQube no se levantan desde este repo**: son herramientas compartidas y viven en el compose de `tartis-recon-ia-parking-infra`. Levántalas desde allí y desde pgAdmin registra esta BD con los datos de la tabla.
 
-Cada microservicio usa un puerto distinto en el host para no chocar: vehicle 5433, spot 5434, tariff 5435, stay 5436, ticket 5437.
+Cada microservicio usa un puerto distinto en el host para no chocar: vehicle 5433, spot 5434, tariff 5435, ticket 5436, stay 5437.
 
 ## Problemas frecuentes
 
@@ -49,4 +49,3 @@ Cada microservicio usa un puerto distinto en el host para no chocar: vehicle 543
 El puerto 5434 ya está en uso → cámbialo en el `.env`. El puerto del host es configurable; el interno no.
 
 Cambias el `.env` y no se entera → `docker compose up -d --force-recreate`. Si tocas usuario o contraseña, además `docker compose down -v`: esas credenciales solo se aplican al crear la BD por primera vez.
->>>>>>> main
