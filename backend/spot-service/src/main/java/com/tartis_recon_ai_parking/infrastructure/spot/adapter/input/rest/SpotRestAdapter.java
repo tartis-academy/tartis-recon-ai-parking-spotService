@@ -14,10 +14,16 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.tartis_recon_ai_parking.application.spot.dto.SpotCreateDTO;
 import com.tartis_recon_ai_parking.application.spot.dto.SpotDTO;
+import com.tartis_recon_ai_parking.application.spot.usecase.AvailableSpotUseCase;
+import com.tartis_recon_ai_parking.application.spot.usecase.CreateSpotUseCase;
+import com.tartis_recon_ai_parking.application.spot.usecase.GetSpotUseCase;
+import com.tartis_recon_ai_parking.application.spot.usecase.UpdateSpotUseCase;
+import com.tartis_recon_ai_parking.domain.spot.VehicleType;
 import com.tartis_recon_ai_parking.application.spot.usecase.CreateSpotUseCase;
 import com.tartis_recon_ai_parking.application.spot.usecase.GetSpotUseCase;
 import com.tartis_recon_ai_parking.application.spot.usecase.UpdateSpotUseCase;
@@ -39,6 +45,7 @@ public class SpotRestAdapter {
     private final ReleaseSpotUseCase releaseSpotUseCase;
     private final UpdateSpotUseCase updateSpotStatusUseCase;
     private final SpotRestMapper spotRestMapper;
+    private final AvailableSpotUseCase availableSpotUseCase;
 
     public SpotRestAdapter(CreateSpotUseCase createSpotUseCase,
             GetSpotUseCase getSpotUseCase,
@@ -46,7 +53,8 @@ public class SpotRestAdapter {
             OccupySpotUseCase occupySpotUseCase,
             ReleaseSpotUseCase releaseSpotUseCase,
             UpdateSpotUseCase updateSpotStatusUseCase,
-            SpotRestMapper spotRestMapper) {
+            SpotRestMapper spotRestMapper,
+        AvailableSpotUseCase availableSpotUseCase) {
         this.createSpotUseCase = createSpotUseCase;
         this.getSpotUseCase = getSpotUseCase;
         this.updateSpotUseCase = updateSpotUseCase;
@@ -54,6 +62,7 @@ public class SpotRestAdapter {
         this.releaseSpotUseCase = releaseSpotUseCase;
         this.updateSpotStatusUseCase = updateSpotStatusUseCase;
         this.spotRestMapper = spotRestMapper;
+        this.availableSpotUseCase = availableSpotUseCase;
     }
 
     @PatchMapping("/{id}/status")
@@ -105,5 +114,11 @@ public class SpotRestAdapter {
     public ResponseEntity<SpotResponse> release(@PathVariable UUID id) {
         SpotDTO released = releaseSpotUseCase.execute(id);
         return ResponseEntity.ok(spotRestMapper.toResponse(released));
+    }
+
+    @GetMapping("/available")
+    public ResponseEntity<Boolean> checkAvailability(@RequestParam VehicleType type) {
+        boolean isAvailable = availableSpotUseCase.execute(type);
+        return ResponseEntity.ok(isAvailable);
     }
 }

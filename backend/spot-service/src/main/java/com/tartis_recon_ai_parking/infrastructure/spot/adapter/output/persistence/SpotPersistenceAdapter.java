@@ -11,8 +11,8 @@ import org.springframework.stereotype.Component;
 
 import com.tartis_recon_ai_parking.application.spot.port.output.SpotPersistence;
 import com.tartis_recon_ai_parking.domain.spot.Spot;
+import org.springframework.transaction.annotation.Transactional;
 
-import jakarta.transaction.Transactional;
 
 
 @Component
@@ -64,5 +64,13 @@ return repository.countByTypeAndStatus(type, status);
                     SpotEntity updated = repository.save(mapper.toEntity(spot));
                     return mapper.toDomain(updated);
                 });
+    }
+
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean existsAvailableByType(VehicleType type) {
+        // isPresent para verificar q es un resultado presente
+        return repository.findFirstAvailable(type).isPresent();
     }
 }
