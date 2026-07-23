@@ -1,0 +1,445 @@
+openapi: 3.0.3
+info:
+  title: spot-service API
+  description: >
+    Manages the physical availability of the car park. Source of truth for the
+    contract-first workflow: DTOs, controllers and enums are derived from this
+    file, never the other way around.
+
+    Consumed by stay-service (via StaySpotPort) to occupy a spot at check-in
+    (RN-01) and to release it at check-out (RN-05).
+
+    Spot STATE MACHINE (SpotStatus):
+      AVAILABLE   -> OCCUPIED      (occupy, at check-in)
+      OCCUPIED    -> AVAILABLE     (release, at check-out)
+      AVAILABLE   -> UNAVAILABLE   (maintenance block, RN-10)
+      UNAVAILABLE -> AVAILABLE     (maintenance release)
+    OCCUPIED -> UNAVAILABLE is FORBIDDEN: a spot with a vehicle inside cannot be
+    blocked for maintenance (returns 409).
+  version: 1.0.0
+  contact:
+    name: TARTIS Recon-AI - Team Parking
+
+servers:
+  - url: /v1
+
+tags:
+  - name: spots
+    description: Spot catalogue, availability and occupancy
+
+paths:
+  /spots:
+    get:
+      tags: [spots]
+      operationId: listSpots
+      summary: Lists spots and their current state
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/SpotStatus'
+        - name: type
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/VehicleType'
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 0
+            minimum: 0
+        - name: size
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 20
+            minimum: 1
+            maximum: 100
+      responses:
+        '200':
+          description: Page of spots
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SpotPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    post:
+      tags: [spots]
+      operationId: createSpot
+      summary: Creates a new spot
+      description: numSpot is unique across the car park.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SpotRequest'
+      responses:
+        '201':
+          description: Spot created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SpotResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          description: A spot with that numSpot already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /spots/{id}:
+    get:
+      tags: [spots]
+      operationId: getSpot
+      summary: Retrieves a spot by its ID
+      parameters:
+        - $ref: '#/components/parameters/SpotIdPath'
+      responses:
+        '200':
+          description: Spot detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SpotResponse'
+        '404':
+          $ref: '#/components/responses/SpotNotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    put:
+      tags: [spots]
+      operationId: updateSpot
+      summary: Updates the data of a spot
+      description: >
+        Updates type and numSpot. The status is NOT changed here, use
+        PATCH /spots/{id}/status, /spots/occupy or /spots/{id}/release.
+      parameters:
+        - $ref: '#/components/parameters/SpotIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SpotUpdateRequest'
+      responses:
+        '200':
+          description: Spot updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SpotResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/SpotNotFound'
+        '409':
+          description: numSpot already used by another spot
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /spots/availability:
+    get:
+      tags: [spots]
+      operationId: checkSpotAvailability
+      summary: Checks whether there are free spots for a vehicle type (RN-01)
+      description: >
+        Read-only, does not reserve anything. Called by stay-service before
+        occupying. Spots in UNAVAILABLE are never counted as free (RN-10).
+        Use POST /spots/occupy to actually take a spot.
+      parameters:
+        - name: type
+          in: query
+          required: true
+          schema:
+            $ref: '#/components/schemas/VehicleType'
+      responses:
+        '200':
+          description: Availability for the requested type
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AvailabilityResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /spots/occupy:
+    post:
+      tags: [spots]
+      operationId: occupySpot
+      summary: Assigns and occupies a free spot (AVAILABLE -> OCCUPIED)
+      description: >
+        Atomically selects a free spot of the requested type and marks it
+        OCCUPIED. Atomicity is mandatory (RN-05): two simultaneous check-ins must
+        never receive the same spot.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OccupyRequest'
+      responses:
+        '200':
+          description: Spot assigned and occupied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SpotResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          description: No spots available for the requested vehicle type (RN-01)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /spots/{id}/release:
+    post:
+      tags: [spots]
+      operationId: releaseSpot
+      summary: Releases a spot at exit (OCCUPIED -> AVAILABLE)
+      description: Called by stay-service at check-out (RN-05).
+      parameters:
+        - $ref: '#/components/parameters/SpotIdPath'
+      responses:
+        '200':
+          description: Spot released
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SpotResponse'
+        '404':
+          $ref: '#/components/responses/SpotNotFound'
+        '409':
+          description: The spot was not OCCUPIED
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /spots/{id}/status:
+    patch:
+      tags: [spots]
+      operationId: changeSpotStatus
+      summary: Blocks or unblocks a spot for maintenance
+      description: >
+        Only AVAILABLE <-> UNAVAILABLE transitions are allowed. Blocking a spot
+        that is OCCUPIED returns 409: there is a vehicle inside it. To occupy or
+        release use /spots/occupy and /spots/{id}/release, not this endpoint.
+      parameters:
+        - $ref: '#/components/parameters/SpotIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SpotStatusRequest'
+      responses:
+        '200':
+          description: State updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SpotResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/SpotNotFound'
+        '409':
+          description: >
+            Forbidden transition: the spot is OCCUPIED, or OCCUPIED was requested
+            through this endpoint.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+components:
+  schemas:
+
+    VehicleType:
+      type: string
+      description: Canonical enum from the domain model. Shared with stay-service.
+      enum: [CAR, CAR_PMR, MOTORBIKE]
+
+    SpotStatus:
+      type: string
+      description: >
+        Spot states. UNAVAILABLE means blocked for maintenance / out of service
+        (RN-10): never offered as available even if empty.
+      enum: [AVAILABLE, OCCUPIED, UNAVAILABLE]
+
+    SpotRequest:
+      type: object
+      required: [type, numSpot]
+      properties:
+        type:
+          $ref: '#/components/schemas/VehicleType'
+        numSpot:
+          type: integer
+          minimum: 1
+          example: 42
+        status:
+          allOf:
+            - $ref: '#/components/schemas/SpotStatus'
+          description: >
+            Optional. Defaults to AVAILABLE. OCCUPIED is rejected here (400):
+            a spot cannot be born occupied.
+
+    SpotUpdateRequest:
+      type: object
+      required: [type, numSpot]
+      description: The status is not accepted here, it has its own endpoints.
+      properties:
+        type:
+          $ref: '#/components/schemas/VehicleType'
+        numSpot:
+          type: integer
+          minimum: 1
+
+    SpotStatusRequest:
+      type: object
+      required: [status]
+      properties:
+        status:
+          allOf:
+            - $ref: '#/components/schemas/SpotStatus'
+          description: Only AVAILABLE or UNAVAILABLE. OCCUPIED returns 409.
+          example: "UNAVAILABLE"
+
+    OccupyRequest:
+      type: object
+      required: [vehicleType]
+      properties:
+        vehicleType:
+          $ref: '#/components/schemas/VehicleType'
+
+    SpotResponse:
+      type: object
+      properties:
+        spotId:
+          type: string
+          format: uuid
+        numSpot:
+          type: integer
+          example: 12
+        type:
+          $ref: '#/components/schemas/VehicleType'
+        status:
+          $ref: '#/components/schemas/SpotStatus'
+        updatedAt:
+          type: string
+          format: date-time
+
+    AvailabilityResponse:
+      type: object
+      properties:
+        type:
+          $ref: '#/components/schemas/VehicleType'
+        available:
+          type: boolean
+          description: true if availableCount > 0
+        availableCount:
+          type: integer
+          description: Number of AVAILABLE spots for that type
+          example: 7
+        totalCount:
+          type: integer
+          description: Total spots of that type, whatever their state
+          example: 20
+
+    SpotPage:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/SpotResponse'
+        page:
+          type: integer
+        size:
+          type: integer
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+
+    ErrorResponse:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        status:
+          type: integer
+          example: 409
+        error:
+          type: string
+          example: "CONFLICT"
+        message:
+          type: string
+          example: "No available spots for vehicle type CAR"
+        path:
+          type: string
+          example: "/v1/spots/occupy"
+
+  parameters:
+    SpotIdPath:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+  responses:
+    BadRequest:
+      description: Invalid request (field or domain validation)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    SpotNotFound:
+      description: Spot not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
