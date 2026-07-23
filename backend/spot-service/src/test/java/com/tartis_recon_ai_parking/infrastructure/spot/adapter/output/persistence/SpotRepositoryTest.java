@@ -1,5 +1,6 @@
 package com.tartis_recon_ai_parking.infrastructure.spot.adapter.output.persistence;
 
+
 import com.tartis_recon_ai_parking.domain.spot.SpotStatus;
 import com.tartis_recon_ai_parking.domain.spot.VehicleType;
 import org.junit.jupiter.api.DisplayName;
@@ -104,5 +105,33 @@ class SpotRepositoryTest {
         assertThat(loadedEntityOpt).isPresent();
         assertThat(loadedEntityOpt.get().getType()).isEqualTo(VehicleType.CAR);
         assertThat(loadedEntityOpt.get().getStatus()).isEqualTo(SpotStatus.AVAILABLE);
+    }
+
+    @Test
+    @DisplayName("Debe encontrar la primera plaza disponible para el tipo de vehiculo")
+    void shouldFindFirstAvailable() {
+        // QUE HACE:
+        // - Crea una entidad de plaza ocupada y otra disponible, ambas del mismo tipo (CAR).
+        // - Las persiste en la base de datos de prueba usando el EntityManager.
+        // - Llama al metodo findFirstAvailable para recuperar la primera disponible.
+        SpotEntity entity1 = new SpotEntity();
+        entity1.setId(UUID.randomUUID());
+        entity1.setType(VehicleType.CAR);
+        entity1.setStatus(SpotStatus.OCCUPIED);
+
+        SpotEntity entity2 = new SpotEntity();
+        entity2.setId(UUID.randomUUID());
+        entity2.setType(VehicleType.CAR);
+        entity2.setStatus(SpotStatus.AVAILABLE);
+
+        entityManager.persist(entity1);
+        entityManager.persist(entity2);
+        entityManager.flush();
+
+        // QUE DEBERIA HACER:
+        // Debe devolver un Optional presente y su ID debe coincidir unicamente con la entidad disponible (entity2).
+        Optional<SpotEntity> availableOpt = spotRepository.findFirstAvailable(VehicleType.CAR);
+        assertThat(availableOpt).isPresent();
+        assertThat(availableOpt.get().getId()).isEqualTo(entity2.getId());
     }
 }
