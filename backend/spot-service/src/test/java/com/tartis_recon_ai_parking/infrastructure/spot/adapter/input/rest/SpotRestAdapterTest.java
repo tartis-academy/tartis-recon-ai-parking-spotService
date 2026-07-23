@@ -54,6 +54,7 @@ class SpotRestAdapterTest {
     @MockitoBean
     private UpdateSpotUseCase updateSpotUseCase;
 
+    // TODO
     @MockitoBean
     private UpdateSpotUseCase updateSpotStatusUseCase;
 
