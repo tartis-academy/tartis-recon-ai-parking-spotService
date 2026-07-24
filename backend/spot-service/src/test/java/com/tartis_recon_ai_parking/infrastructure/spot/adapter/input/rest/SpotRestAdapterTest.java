@@ -22,6 +22,7 @@ import org.junit.jupiter.api.BeforeEach;
 
 import com.tartis_recon_ai_parking.application.spot.dto.SpotCreateDTO;
 import com.tartis_recon_ai_parking.application.spot.dto.SpotDTO;
+import com.tartis_recon_ai_parking.application.spot.usecase.AvailableSpotUseCase;
 import com.tartis_recon_ai_parking.application.spot.usecase.CreateSpotUseCase;
 import com.tartis_recon_ai_parking.application.spot.usecase.GetSpotUseCase;
 import com.tartis_recon_ai_parking.application.spot.usecase.OccupySpotUseCase;
@@ -54,7 +55,6 @@ class SpotRestAdapterTest {
     @MockitoBean
     private UpdateSpotUseCase updateSpotUseCase;
 
-    // TODO
     @MockitoBean
     private UpdateSpotUseCase updateSpotStatusUseCase;
 
@@ -66,6 +66,9 @@ class SpotRestAdapterTest {
 
     @MockitoBean
     private SpotRestMapper spotRestMapper;
+
+    @MockitoBean
+    private AvailableSpotUseCase availableSpotUseCase;
 
     @Test
     @DisplayName("POST /v1/spots - debe retornar 201 CREATED y la plaza creada")
