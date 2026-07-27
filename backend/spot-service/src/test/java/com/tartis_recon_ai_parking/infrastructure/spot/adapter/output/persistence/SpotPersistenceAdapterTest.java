@@ -191,6 +191,39 @@ class SpotPersistenceAdapterTest {
         verify(spotRepository, times(1)).countByTypeAndStatus(VehicleType.CAR, SpotStatus.AVAILABLE);
     }
     @Test
+    @DisplayName("Debe comprobar la disponibilidad por tipo con un conteo, sin usar la consulta con bloqueo")
+    void shouldCheckAvailabilityByTypeWithoutLocking() {
+        // QUE HACE:
+        // - Configura el repositorio para devolver un conteo mayor que cero de plazas AVAILABLE.
+        // - Ejecuta existsAvailableByType.
+        when(spotRepository.countByTypeAndStatus(VehicleType.CAR, SpotStatus.AVAILABLE)).thenReturn(3L);
+
+        boolean result = spotPersistenceAdapter.existsAvailableByType(VehicleType.CAR);
+
+        // QUE DEBERIA HACER:
+        // Debe retornar true usando el conteo y nunca invocar findFirstAvailable (SELECT ... FOR UPDATE).
+        assertThat(result).isTrue();
+        verify(spotRepository, times(1)).countByTypeAndStatus(VehicleType.CAR, SpotStatus.AVAILABLE);
+        verify(spotRepository, never()).findFirstAvailable(any());
+    }
+
+    @Test
+    @DisplayName("Debe retornar false si no hay ninguna plaza disponible del tipo solicitado")
+    void shouldReturnFalseWhenNoAvailableSpotOfType() {
+        // QUE HACE:
+        // - Configura el repositorio para devolver un conteo de cero plazas AVAILABLE.
+        // - Ejecuta existsAvailableByType.
+        when(spotRepository.countByTypeAndStatus(VehicleType.MOTORBIKE, SpotStatus.AVAILABLE)).thenReturn(0L);
+
+        boolean result = spotPersistenceAdapter.existsAvailableByType(VehicleType.MOTORBIKE);
+
+        // QUE DEBERIA HACER:
+        // Debe retornar false.
+        assertThat(result).isFalse();
+        verify(spotRepository, times(1)).countByTypeAndStatus(VehicleType.MOTORBIKE, SpotStatus.AVAILABLE);
+    }
+
+    @Test
     @DisplayName("Debe encontrar una plaza disponible, ocuparla y guardarla exitosamente")
     void shouldFindAndOccupyAvailableSpotSuccessfully() {
         // QUE HACE:

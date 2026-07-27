@@ -27,10 +27,12 @@ import com.tartis_recon_ai_parking.application.spot.usecase.CreateSpotUseCase;
 import com.tartis_recon_ai_parking.application.spot.usecase.GetSpotUseCase;
 import com.tartis_recon_ai_parking.application.spot.usecase.OccupySpotUseCase;
 import com.tartis_recon_ai_parking.application.spot.usecase.ReleaseSpotUseCase;
+import com.tartis_recon_ai_parking.application.spot.usecase.UpdateSpotStatusUseCase;
 import com.tartis_recon_ai_parking.application.spot.usecase.UpdateSpotUseCase;
 import com.tartis_recon_ai_parking.domain.spot.Spot;
 import com.tartis_recon_ai_parking.domain.spot.SpotStatus;
 import com.tartis_recon_ai_parking.domain.spot.VehicleType;
+import com.tartis_recon_ai_parking.domain.spot.exception.SpotCannotBeBlockedException;
 import com.tartis_recon_ai_parking.infrastructure.spot.adapter.input.rest.dto.response.SpotResponse;
 
 @SpringBootTest
@@ -56,7 +58,7 @@ class SpotRestAdapterTest {
     private UpdateSpotUseCase updateSpotUseCase;
 
     @MockitoBean
-    private UpdateSpotUseCase updateSpotStatusUseCase;
+    private UpdateSpotStatusUseCase updateSpotStatusUseCase;
 
     @MockitoBean
     private OccupySpotUseCase occupySpotUseCase;
@@ -218,23 +220,42 @@ class SpotRestAdapterTest {
     void updateStatus_ShouldReturnOk_WhenSpotStatusIsUpdated() throws Exception {
         // QUE HACE:
         // - Simula la actualización del estado de una plaza en el UseCase.
-        // - Envía una petición PATCH a /v1/spots/{id}/status con el nuevo tipo/estado.
+        // - Envía una petición PATCH a /v1/spots/{id}/status con el nuevo estado.
         UUID spotId = UUID.randomUUID();
-        
-        SpotDTO updatedSpot = new SpotDTO(spotId, VehicleType.CAR, SpotStatus.UNAVAILABLE);
+
+        Spot updatedSpot = Spot.reconstruct(spotId, VehicleType.CAR, SpotStatus.UNAVAILABLE);
         SpotResponse mockResponse = new SpotResponse(spotId, VehicleType.CAR, SpotStatus.UNAVAILABLE);
 
-        when(updateSpotStatusUseCase.execute(eq(spotId), any(SpotCreateDTO.class))).thenReturn(updatedSpot);
-        when(spotRestMapper.toResponse(updatedSpot)).thenReturn(mockResponse);
+        when(updateSpotStatusUseCase.execute(spotId, SpotStatus.UNAVAILABLE)).thenReturn(updatedSpot);
+        when(spotRestMapper.toResponse(any(SpotDTO.class))).thenReturn(mockResponse);
 
         // QUE DEBERIA HACER:
         // Debe retornar estado 200 OK y la plaza con el estado UNAVAILABLE reflejado.
         mockMvc.perform(patch("/v1/spots/{id}/status", spotId)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"type\":\"CAR\"}"))
+                .content("{\"status\":\"UNAVAILABLE\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(spotId.toString()))
                 .andExpect(jsonPath("$.type").value("CAR"))
                 .andExpect(jsonPath("$.status").value("UNAVAILABLE"));
+    }
+
+    @Test
+    @DisplayName("PATCH /v1/spots/{id}/status - debe retornar 409 CONFLICT si la transicion no esta permitida")
+    void updateStatus_ShouldReturnConflict_WhenTransitionIsForbidden() throws Exception {
+        // QUE HACE:
+        // - Configura el UseCase para lanzar SpotCannotBeBlockedException (plaza OCCUPIED o OCCUPIED solicitado).
+        // - Envía una petición PATCH a /v1/spots/{id}/status.
+        UUID spotId = UUID.randomUUID();
+
+        when(updateSpotStatusUseCase.execute(spotId, SpotStatus.UNAVAILABLE))
+                .thenThrow(new SpotCannotBeBlockedException("Para poner una plaza en mantenimiento, debe estar DISPONIBLE"));
+
+        // QUE DEBERIA HACER:
+        // Debe retornar estado 409 CONFLICT traducido por CustomizedExceptionAdapter.
+        mockMvc.perform(patch("/v1/spots/{id}/status", spotId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"status\":\"UNAVAILABLE\"}"))
+                .andExpect(status().isConflict());
     }
 }
