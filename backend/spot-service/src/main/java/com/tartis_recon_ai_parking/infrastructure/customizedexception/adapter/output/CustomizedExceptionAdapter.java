@@ -29,16 +29,9 @@ public class CustomizedExceptionAdapter {
         return build(HttpStatus.NOT_FOUND, ex.getMessage(), request);
     }
 
-    @ExceptionHandler(NoAvailableSpotException.class)
-    public ResponseEntity<ErrorResponse> handleNoAvailableSpot(NoAvailableSpotException ex, HttpServletRequest request) {
-        return build(HttpStatus.CONFLICT, ex.getMessage(), request);
-    }
-
     @ExceptionHandler({
             InvalidSpotException.class,
             SpotValidationException.class,
-            SpotNotOccupiedException.class,
-            SpotNotBlockedException.class,
             HttpMessageNotReadableException.class,
             MethodArgumentTypeMismatchException.class,
             MethodArgumentNotValidException.class,
@@ -46,8 +39,11 @@ public class CustomizedExceptionAdapter {
     })
     public ResponseEntity<ErrorResponse> handleBadRequest(Exception ex, HttpServletRequest request) {
         String message = ex.getMessage();
-        if (ex instanceof MethodArgumentNotValidException navEx && navEx.getBindingResult().getFieldError() != null) {
-            message = navEx.getBindingResult().getFieldError().getDefaultMessage();
+        if (ex instanceof MethodArgumentNotValidException navEx) {
+            var fieldError = navEx.getBindingResult().getFieldError();
+            message = fieldError != null
+                    ? fieldError.getDefaultMessage()
+                    : "La solicitud no cumple las validaciones requeridas.";
         } else if (ex instanceof HttpMessageNotReadableException) {
             message = "El cuerpo de la solicitud no es válido o contiene un formato incorrecto.";
         } else if (ex instanceof MethodArgumentTypeMismatchException typeEx) {
@@ -59,7 +55,10 @@ public class CustomizedExceptionAdapter {
     @ExceptionHandler({
             SpotAlreadyOccupiedException.class,
             SpotCannotBeBlockedException.class,
-            SpotNotAvailableException.class
+            SpotNotAvailableException.class,
+            SpotNotOccupiedException.class,
+            SpotNotBlockedException.class,
+            NoAvailableSpotException.class
     })
     public ResponseEntity<ErrorResponse> handleConflict(SpotDomainException ex, HttpServletRequest request) {
         return build(HttpStatus.CONFLICT, ex.getMessage(), request);
