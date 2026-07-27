@@ -185,7 +185,7 @@ class SpotRestAdapterTest {
         // Debe retornar estado 200 OK y los datos reflejando el estado OCCUPIED.
         mockMvc.perform(post("/v1/spots/occupy")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"type\":\"CAR\"}"))
+                .content("{\"vehicleType\":\"CAR\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(spotId.toString()))
                 .andExpect(jsonPath("$.type").value("CAR"))
