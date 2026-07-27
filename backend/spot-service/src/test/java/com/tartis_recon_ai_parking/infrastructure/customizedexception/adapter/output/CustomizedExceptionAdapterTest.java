@@ -80,15 +80,21 @@ class CustomizedExceptionAdapterTest {
     }
 
     @Test
-    @DisplayName("Debe retornar BAD REQUEST (400) para validación y estados no permitidos")
+    @DisplayName("Debe retornar BAD REQUEST (400) para validación, estados no permitidos y fallos de formato de Spring MVC")
     void handleBadRequest_OtherExceptions_ShouldReturnBadRequestStatus() {
         SpotValidationException valEx = new SpotValidationException("Campo nulo");
         SpotNotOccupiedException notOccEx = new SpotNotOccupiedException("Plaza no ocupada");
         SpotNotBlockedException notBlockEx = new SpotNotBlockedException("Plaza no bloqueada");
+        org.springframework.http.converter.HttpMessageNotReadableException parseEx =
+                new org.springframework.http.converter.HttpMessageNotReadableException("Invalid JSON", (org.springframework.http.HttpInputMessage) null);
 
         assertEquals(HttpStatus.BAD_REQUEST, exceptionAdapter.handleBadRequest(valEx, request).getStatusCode());
         assertEquals(HttpStatus.BAD_REQUEST, exceptionAdapter.handleBadRequest(notOccEx, request).getStatusCode());
         assertEquals(HttpStatus.BAD_REQUEST, exceptionAdapter.handleBadRequest(notBlockEx, request).getStatusCode());
+
+        ResponseEntity<ErrorResponse> responseParse = exceptionAdapter.handleBadRequest(parseEx, request);
+        assertEquals(HttpStatus.BAD_REQUEST, responseParse.getStatusCode());
+        assertEquals("El cuerpo de la solicitud no es válido o contiene un formato incorrecto.", responseParse.getBody().message());
     }
 
     @Test

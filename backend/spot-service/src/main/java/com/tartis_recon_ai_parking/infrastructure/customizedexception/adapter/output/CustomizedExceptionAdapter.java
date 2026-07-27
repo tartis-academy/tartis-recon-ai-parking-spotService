@@ -13,6 +13,9 @@ import com.tartis_recon_ai_parking.domain.spot.exception.SpotValidationException
 import com.tartis_recon_ai_parking.infrastructure.customizedexception.adapter.output.dto.ErrorResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.Instant;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -35,10 +38,22 @@ public class CustomizedExceptionAdapter {
             InvalidSpotException.class,
             SpotValidationException.class,
             SpotNotOccupiedException.class,
-            SpotNotBlockedException.class
+            SpotNotBlockedException.class,
+            HttpMessageNotReadableException.class,
+            MethodArgumentTypeMismatchException.class,
+            MethodArgumentNotValidException.class,
+            IllegalArgumentException.class
     })
-    public ResponseEntity<ErrorResponse> handleBadRequest(SpotDomainException ex, HttpServletRequest request) {
-        return build(HttpStatus.BAD_REQUEST, ex.getMessage(), request);
+    public ResponseEntity<ErrorResponse> handleBadRequest(Exception ex, HttpServletRequest request) {
+        String message = ex.getMessage();
+        if (ex instanceof MethodArgumentNotValidException navEx && navEx.getBindingResult().getFieldError() != null) {
+            message = navEx.getBindingResult().getFieldError().getDefaultMessage();
+        } else if (ex instanceof HttpMessageNotReadableException) {
+            message = "El cuerpo de la solicitud no es válido o contiene un formato incorrecto.";
+        } else if (ex instanceof MethodArgumentTypeMismatchException typeEx) {
+            message = "El parámetro '" + typeEx.getName() + "' tiene un formato no válido.";
+        }
+        return build(HttpStatus.BAD_REQUEST, message, request);
     }
 
     @ExceptionHandler({
