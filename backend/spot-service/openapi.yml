@@ -33,39 +33,18 @@ paths:
       tags: [spots]
       operationId: listSpots
       summary: Lists spots and their current state
-      parameters:
-        - name: status
-          in: query
-          required: false
-          schema:
-            $ref: '#/components/schemas/SpotStatus'
-        - name: type
-          in: query
-          required: false
-          schema:
-            $ref: '#/components/schemas/VehicleType'
-        - name: page
-          in: query
-          required: false
-          schema:
-            type: integer
-            default: 0
-            minimum: 0
-        - name: size
-          in: query
-          required: false
-          schema:
-            type: integer
-            default: 20
-            minimum: 1
-            maximum: 100
+      description: >
+        Returns the whole catalogue. Pagination and status/type filters are
+        deferred to Phase II; until then this endpoint takes no parameters.
       responses:
         '200':
-          description: Page of spots
+          description: Every spot in the car park
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SpotPage'
+                type: array
+                items:
+                  $ref: '#/components/schemas/SpotResponse'
         '400':
           $ref: '#/components/responses/BadRequest'
         '500':
@@ -75,7 +54,7 @@ paths:
       tags: [spots]
       operationId: createSpot
       summary: Creates a new spot
-      description: numSpot is unique across the car park.
+      description: The spot is always born AVAILABLE; its id is generated server-side.
       requestBody:
         required: true
         content:
@@ -91,12 +70,6 @@ paths:
                 $ref: '#/components/schemas/SpotResponse'
         '400':
           $ref: '#/components/responses/BadRequest'
-        '409':
-          description: A spot with that numSpot already exists
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
         '500':
           $ref: '#/components/responses/InternalError'
 
@@ -124,7 +97,7 @@ paths:
       operationId: updateSpot
       summary: Updates the data of a spot
       description: >
-        Updates type and numSpot. The status is NOT changed here, use
+        Updates the vehicle type. The status is NOT changed here, use
         PATCH /spots/{id}/status, /spots/occupy or /spots/{id}/release.
       parameters:
         - $ref: '#/components/parameters/SpotIdPath'
@@ -133,7 +106,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/SpotUpdateRequest'
+              $ref: '#/components/schemas/SpotRequest'
       responses:
         '200':
           description: Spot updated
@@ -146,7 +119,9 @@ paths:
         '404':
           $ref: '#/components/responses/SpotNotFound'
         '409':
-          description: numSpot already used by another spot
+          description: >
+            The spot is OCCUPIED: it has an active stay attached and its type
+            cannot change until it is released (IN-05/IN-18).
           content:
             application/json:
               schema:
@@ -296,31 +271,13 @@ components:
 
     SpotRequest:
       type: object
-      required: [type, numSpot]
+      required: [type]
+      description: >
+        Used both to create and to update a spot. The status is not accepted
+        here, it has its own endpoints.
       properties:
         type:
           $ref: '#/components/schemas/VehicleType'
-        numSpot:
-          type: integer
-          minimum: 1
-          example: 42
-        status:
-          allOf:
-            - $ref: '#/components/schemas/SpotStatus'
-          description: >
-            Optional. Defaults to AVAILABLE. OCCUPIED is rejected here (400):
-            a spot cannot be born occupied.
-
-    SpotUpdateRequest:
-      type: object
-      required: [type, numSpot]
-      description: The status is not accepted here, it has its own endpoints.
-      properties:
-        type:
-          $ref: '#/components/schemas/VehicleType'
-        numSpot:
-          type: integer
-          minimum: 1
 
     SpotStatusRequest:
       type: object
@@ -335,6 +292,10 @@ components:
     OccupyRequest:
       type: object
       required: [vehicleType]
+      description: >
+        The legacy key "type" is still accepted as an alias for vehicleType so
+        spot-service and stay-service can be deployed in any order. It is
+        transitional and will be removed once stay-service sends vehicleType.
       properties:
         vehicleType:
           $ref: '#/components/schemas/VehicleType'
@@ -342,19 +303,13 @@ components:
     SpotResponse:
       type: object
       properties:
-        spotId:
+        id:
           type: string
           format: uuid
-        numSpot:
-          type: integer
-          example: 12
         type:
           $ref: '#/components/schemas/VehicleType'
         status:
           $ref: '#/components/schemas/SpotStatus'
-        updatedAt:
-          type: string
-          format: date-time
 
     AvailabilityResponse:
       type: object
@@ -373,23 +328,6 @@ components:
           description: Total spots of that type, whatever their state
           example: 20
 
-    SpotPage:
-      type: object
-      properties:
-        content:
-          type: array
-          items:
-            $ref: '#/components/schemas/SpotResponse'
-        page:
-          type: integer
-        size:
-          type: integer
-        totalElements:
-          type: integer
-          format: int64
-        totalPages:
-          type: integer
-
     ErrorResponse:
       type: object
       properties:
@@ -401,7 +339,8 @@ components:
           example: 409
         error:
           type: string
-          example: "CONFLICT"
+          description: HTTP reason phrase, as returned by the server.
+          example: "Conflict"
         message:
           type: string
           example: "No available spots for vehicle type CAR"

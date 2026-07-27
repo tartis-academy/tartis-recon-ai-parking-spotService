@@ -12,6 +12,7 @@ import com.tartis_recon_ai_parking.application.spot.usecase.CreateSpotUseCase;
 import com.tartis_recon_ai_parking.application.spot.usecase.GetSpotUseCase;
 import com.tartis_recon_ai_parking.application.spot.usecase.OccupySpotUseCase;
 import com.tartis_recon_ai_parking.application.spot.usecase.ReleaseSpotUseCase;
+import com.tartis_recon_ai_parking.application.spot.usecase.UpdateSpotStatusUseCase;
 import com.tartis_recon_ai_parking.application.spot.usecase.UpdateSpotUseCase;
 
 @DisplayName("Tests para BeanConfiguration")
@@ -56,6 +57,18 @@ class BeanConfigurationTest {
         // QUE HACE:
         // Llama al metodo de configuracion que provee el bean UpdateSpotUseCase.
         UpdateSpotUseCase useCase = beanConfiguration.updateSpotUseCase(spotPersistence);
+
+        // QUE DEBERIA HACER:
+        // El bean generado no debe ser nulo.
+        assertThat(useCase).isNotNull();
+    }
+
+    @Test
+    @DisplayName("Debe instanciar correctamente el bean UpdateSpotStatusUseCase")
+    void shouldCreateUpdateSpotStatusUseCaseBean() {
+        // QUE HACE:
+        // Llama al metodo de configuracion que provee el bean UpdateSpotStatusUseCase.
+        UpdateSpotStatusUseCase useCase = beanConfiguration.updateSpotStatusUseCase(spotPersistence);
 
         // QUE DEBERIA HACER:
         // El bean generado no debe ser nulo.

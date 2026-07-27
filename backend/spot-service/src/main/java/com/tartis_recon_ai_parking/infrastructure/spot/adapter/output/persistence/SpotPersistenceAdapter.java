@@ -11,7 +11,6 @@ import org.springframework.stereotype.Component;
 
 import com.tartis_recon_ai_parking.application.spot.port.output.SpotPersistence;
 import com.tartis_recon_ai_parking.domain.spot.Spot;
-import org.springframework.transaction.annotation.Transactional;
 
 
 
@@ -27,7 +26,6 @@ public class SpotPersistenceAdapter implements SpotPersistence {
     }
 
     @Override
-    @Transactional
     public Spot save(Spot spot) {
         SpotEntity saved = repository.save(mapper.toEntity(spot));
         return mapper.toDomain(saved);
@@ -51,11 +49,15 @@ public class SpotPersistenceAdapter implements SpotPersistence {
     }
     @Override
 public long countByTypeAndStatus(VehicleType type, SpotStatus status) {
-return repository.countByTypeAndStatus(type, status); 
+return repository.countByTypeAndStatus(type, status);
 }
 
+    @Override
+    public long countByType(VehicleType type) {
+        return repository.countByType(type);
+    }
+
 @Override
-    @Transactional
     public Optional<Spot> findAndOccupyAvailableSpot(VehicleType type) {
         return repository.findFirstAvailable(type)
                 .map(entity -> {
@@ -67,8 +69,8 @@ return repository.countByTypeAndStatus(type, status);
     }
 
     @Override
-    @Transactional(readOnly = true)
     public boolean existsAvailableByType(VehicleType type) {
-        return repository.findFirstAvailable(type).isPresent();
+        // Consulta sin bloqueo: findFirstAvailable usa SELECT ... FOR UPDATE, prohibido en transaccion readOnly.
+        return repository.countByTypeAndStatus(type, SpotStatus.AVAILABLE) > 0;
     }
 }

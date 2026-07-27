@@ -5,6 +5,7 @@ import com.tartis_recon_ai_parking.application.spot.dto.SpotDTO;
 import com.tartis_recon_ai_parking.application.spot.factory.SpotDTOFactory;
 import com.tartis_recon_ai_parking.application.spot.port.output.SpotPersistence;
 import com.tartis_recon_ai_parking.domain.spot.Spot;
+import org.springframework.transaction.annotation.Transactional;
 
 
 public class CreateSpotUseCase {
@@ -15,6 +16,7 @@ public class CreateSpotUseCase {
         this.spotPersistence = spotPersistence;
     }
 
+    @Transactional
     public SpotDTO execute(SpotCreateDTO createDTO) {
         Spot spot = Spot.create(createDTO.getType());
         Spot saved = spotPersistence.save(spot);
