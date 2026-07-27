@@ -10,6 +10,7 @@ import com.tartis_recon_ai_parking.domain.spot.Spot;
 import com.tartis_recon_ai_parking.domain.spot.SpotStatus;
 import com.tartis_recon_ai_parking.domain.spot.VehicleType;
 import com.tartis_recon_ai_parking.domain.spot.exception.SpotNotFoundException;
+import com.tartis_recon_ai_parking.domain.spot.exception.SpotValidationException;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -135,8 +136,8 @@ public class UpdateSpotUseCaseTests {
 
         when(spotPersistence.findById(id)).thenReturn(Optional.of(existing));
 
-        org.junit.jupiter.api.Assertions.assertThrows(
-            com.tartis_recon_ai_parking.domain.spot.exception.SpotValidationException.class, 
+        assertThrows(
+            SpotValidationException.class, 
             () -> useCase.execute(id, updateDTO)
         );
 

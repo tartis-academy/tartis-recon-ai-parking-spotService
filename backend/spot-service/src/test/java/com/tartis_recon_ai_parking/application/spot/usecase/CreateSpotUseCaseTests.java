@@ -2,6 +2,7 @@ package com.tartis_recon_ai_parking.application.spot.usecase;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.tartis_recon_ai_parking.application.spot.dto.SpotCreateDTO;
 import com.tartis_recon_ai_parking.application.spot.dto.SpotDTO;
@@ -9,6 +10,7 @@ import com.tartis_recon_ai_parking.application.spot.port.output.SpotPersistence;
 import com.tartis_recon_ai_parking.domain.spot.Spot;
 import com.tartis_recon_ai_parking.domain.spot.SpotStatus;
 import com.tartis_recon_ai_parking.domain.spot.VehicleType;
+import com.tartis_recon_ai_parking.domain.spot.exception.SpotValidationException;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -112,8 +114,8 @@ public class CreateSpotUseCaseTests {
 
         SpotCreateDTO createDTO = new SpotCreateDTO(null);
         
-        org.junit.jupiter.api.Assertions.assertThrows(
-            com.tartis_recon_ai_parking.domain.spot.exception.SpotValidationException.class, 
+        assertThrows(
+            SpotValidationException.class, 
             () -> useCase.execute(createDTO)
         );
 
