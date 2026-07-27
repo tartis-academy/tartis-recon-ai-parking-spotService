@@ -10,8 +10,15 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockHttpServletRequest;
 
+import org.springframework.core.MethodParameter;
 import org.springframework.http.HttpInputMessage;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.validation.BeanPropertyBindingResult;
+import org.springframework.validation.BindingResult;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import com.tartis_recon_ai_parking.domain.spot.VehicleType;
 import com.tartis_recon_ai_parking.domain.spot.exception.InvalidSpotException;
 import com.tartis_recon_ai_parking.domain.spot.exception.NoAvailableSpotException;
 import com.tartis_recon_ai_parking.domain.spot.exception.SpotAlreadyOccupiedException;
@@ -97,6 +104,27 @@ class CustomizedExceptionAdapterTest {
         ResponseEntity<ErrorResponse> responseParse = exceptionAdapter.handleBadRequest(parseEx, request);
         assertEquals(HttpStatus.BAD_REQUEST, responseParse.getStatusCode());
         assertEquals("El cuerpo de la solicitud no es válido o contiene un formato incorrecto.", responseParse.getBody().message());
+    }
+
+    @Test
+    @DisplayName("Debe retornar BAD REQUEST (400) para MethodArgumentTypeMismatchException y MethodArgumentNotValidException con error de campo")
+    void handleBadRequest_TypeMismatchAndFieldValidation_ShouldReturnBadRequestStatus() throws NoSuchMethodException {
+        MethodArgumentTypeMismatchException typeMismatchEx =
+                new MethodArgumentTypeMismatchException("CARRO", VehicleType.class, "type", null, new IllegalArgumentException());
+
+        ResponseEntity<ErrorResponse> typeMismatchResponse = exceptionAdapter.handleBadRequest(typeMismatchEx, request);
+        assertEquals(HttpStatus.BAD_REQUEST, typeMismatchResponse.getStatusCode());
+        assertEquals("El parámetro 'type' tiene un formato no válido.", typeMismatchResponse.getBody().message());
+
+        BindingResult bindingResult = new BeanPropertyBindingResult(new Object(), "spotRequest");
+        bindingResult.addError(new FieldError("spotRequest", "type", "El tipo es obligatorio"));
+        MethodParameter methodParameter = new MethodParameter(
+                getClass().getDeclaredMethod("handleBadRequest_TypeMismatchAndFieldValidation_ShouldReturnBadRequestStatus"), -1);
+        MethodArgumentNotValidException notValidEx = new MethodArgumentNotValidException(methodParameter, bindingResult);
+
+        ResponseEntity<ErrorResponse> notValidResponse = exceptionAdapter.handleBadRequest(notValidEx, request);
+        assertEquals(HttpStatus.BAD_REQUEST, notValidResponse.getStatusCode());
+        assertEquals("El tipo es obligatorio", notValidResponse.getBody().message());
     }
 
     @Test
