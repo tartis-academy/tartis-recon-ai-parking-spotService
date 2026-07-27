@@ -1,5 +1,6 @@
 package com.tartis_recon_ai_parking.infrastructure.customizedexception.adapter.output;
 
+import com.tartis_recon_ai_parking.domain.spot.exception.ConcurrentSpotModificationException;
 import com.tartis_recon_ai_parking.domain.spot.exception.InvalidSpotException;
 import com.tartis_recon_ai_parking.domain.spot.exception.SpotNotFoundException;
 import java.time.Instant;
@@ -20,6 +21,11 @@ public class CustomizedExceptionAdapter {
     @ExceptionHandler(InvalidSpotException.class)
     public ResponseEntity<Map<String, Object>> handleInvalid(InvalidSpotException ex) {
         return build(HttpStatus.BAD_REQUEST, ex.getMessage());
+    }
+
+    @ExceptionHandler(ConcurrentSpotModificationException.class)
+    public ResponseEntity<Map<String, Object>> handleConcurrentModification(ConcurrentSpotModificationException ex) {
+        return build(HttpStatus.CONFLICT, ex.getMessage());
     }
 
     private ResponseEntity<Map<String, Object>> build(HttpStatus status, String message) {
