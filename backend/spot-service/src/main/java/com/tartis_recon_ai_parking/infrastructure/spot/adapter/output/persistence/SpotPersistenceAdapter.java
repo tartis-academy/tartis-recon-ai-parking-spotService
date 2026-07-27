@@ -69,6 +69,7 @@ return repository.countByTypeAndStatus(type, status);
     @Override
     @Transactional(readOnly = true)
     public boolean existsAvailableByType(VehicleType type) {
-        return repository.findFirstAvailable(type).isPresent();
+        // Consulta sin bloqueo: findFirstAvailable usa SELECT ... FOR UPDATE, prohibido en transaccion readOnly.
+        return repository.countByTypeAndStatus(type, SpotStatus.AVAILABLE) > 0;
     }
 }
