@@ -10,8 +10,16 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockHttpServletRequest;
 
+import org.springframework.core.MethodParameter;
 import org.springframework.http.HttpInputMessage;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.validation.BeanPropertyBindingResult;
+import org.springframework.validation.BindingResult;
+import org.springframework.validation.FieldError;
+import org.springframework.validation.ObjectError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import com.tartis_recon_ai_parking.domain.spot.VehicleType;
 import com.tartis_recon_ai_parking.domain.spot.exception.InvalidSpotException;
 import com.tartis_recon_ai_parking.domain.spot.exception.NoAvailableSpotException;
 import com.tartis_recon_ai_parking.domain.spot.exception.SpotAlreadyOccupiedException;
@@ -52,21 +60,6 @@ class CustomizedExceptionAdapterTest {
     }
 
     @Test
-    @DisplayName("Debe retornar CONFLICT (409) cuando se lanza NoAvailableSpotException")
-    void handleNoAvailableSpot_ShouldReturnConflictStatus() {
-        NoAvailableSpotException exception = new NoAvailableSpotException("Sin plazas disponibles");
-
-        ResponseEntity<ErrorResponse> response = exceptionAdapter.handleNoAvailableSpot(exception, request);
-
-        assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
-        assertNotNull(response.getBody());
-        assertEquals(409, response.getBody().status());
-        assertEquals("Conflict", response.getBody().error());
-        assertEquals("Sin plazas disponibles", response.getBody().message());
-        assertEquals("/v1/spots/test", response.getBody().path());
-    }
-
-    @Test
     @DisplayName("Debe retornar BAD REQUEST (400) cuando se lanza InvalidSpotException")
     void handleBadRequest_ShouldReturnBadRequestStatus() {
         InvalidSpotException exception = new InvalidSpotException("Plaza inválida");
@@ -82,21 +75,53 @@ class CustomizedExceptionAdapterTest {
     }
 
     @Test
-    @DisplayName("Debe retornar BAD REQUEST (400) para validación, estados no permitidos y fallos de formato de Spring MVC")
+    @DisplayName("Debe retornar BAD REQUEST (400) para validación y fallos de formato de Spring MVC")
     void handleBadRequest_OtherExceptions_ShouldReturnBadRequestStatus() {
         SpotValidationException valEx = new SpotValidationException("Campo nulo");
-        SpotNotOccupiedException notOccEx = new SpotNotOccupiedException("Plaza no ocupada");
-        SpotNotBlockedException notBlockEx = new SpotNotBlockedException("Plaza no bloqueada");
         HttpMessageNotReadableException parseEx =
                 new HttpMessageNotReadableException("Invalid JSON", (HttpInputMessage) null);
 
         assertEquals(HttpStatus.BAD_REQUEST, exceptionAdapter.handleBadRequest(valEx, request).getStatusCode());
-        assertEquals(HttpStatus.BAD_REQUEST, exceptionAdapter.handleBadRequest(notOccEx, request).getStatusCode());
-        assertEquals(HttpStatus.BAD_REQUEST, exceptionAdapter.handleBadRequest(notBlockEx, request).getStatusCode());
 
         ResponseEntity<ErrorResponse> responseParse = exceptionAdapter.handleBadRequest(parseEx, request);
         assertEquals(HttpStatus.BAD_REQUEST, responseParse.getStatusCode());
         assertEquals("El cuerpo de la solicitud no es válido o contiene un formato incorrecto.", responseParse.getBody().message());
+    }
+
+    @Test
+    @DisplayName("Debe retornar BAD REQUEST (400) para MethodArgumentTypeMismatchException y MethodArgumentNotValidException con error de campo")
+    void handleBadRequest_TypeMismatchAndFieldValidation_ShouldReturnBadRequestStatus() throws NoSuchMethodException {
+        MethodArgumentTypeMismatchException typeMismatchEx =
+                new MethodArgumentTypeMismatchException("CARRO", VehicleType.class, "type", null, new IllegalArgumentException());
+
+        ResponseEntity<ErrorResponse> typeMismatchResponse = exceptionAdapter.handleBadRequest(typeMismatchEx, request);
+        assertEquals(HttpStatus.BAD_REQUEST, typeMismatchResponse.getStatusCode());
+        assertEquals("El parámetro 'type' tiene un formato no válido.", typeMismatchResponse.getBody().message());
+
+        BindingResult bindingResult = new BeanPropertyBindingResult(new Object(), "spotRequest");
+        bindingResult.addError(new FieldError("spotRequest", "type", "El tipo es obligatorio"));
+        MethodParameter methodParameter = new MethodParameter(
+                getClass().getDeclaredMethod("handleBadRequest_TypeMismatchAndFieldValidation_ShouldReturnBadRequestStatus"), -1);
+        MethodArgumentNotValidException notValidEx = new MethodArgumentNotValidException(methodParameter, bindingResult);
+
+        ResponseEntity<ErrorResponse> notValidResponse = exceptionAdapter.handleBadRequest(notValidEx, request);
+        assertEquals(HttpStatus.BAD_REQUEST, notValidResponse.getStatusCode());
+        assertEquals("El tipo es obligatorio", notValidResponse.getBody().message());
+    }
+
+    @Test
+    @DisplayName("Debe retornar un mensaje generico (no el interno de Spring) cuando MethodArgumentNotValidException no trae field error")
+    void handleBadRequest_ValidationWithoutFieldError_ShouldReturnGenericMessage() throws NoSuchMethodException {
+        BindingResult bindingResult = new BeanPropertyBindingResult(new Object(), "spotRequest");
+        bindingResult.addError(new ObjectError("spotRequest", "Error a nivel de objeto"));
+        MethodParameter methodParameter = new MethodParameter(
+                getClass().getDeclaredMethod("handleBadRequest_ValidationWithoutFieldError_ShouldReturnGenericMessage"), -1);
+        MethodArgumentNotValidException notValidEx = new MethodArgumentNotValidException(methodParameter, bindingResult);
+
+        ResponseEntity<ErrorResponse> response = exceptionAdapter.handleBadRequest(notValidEx, request);
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertEquals("La solicitud no cumple las validaciones requeridas.", response.getBody().message());
     }
 
     @Test
@@ -105,10 +130,16 @@ class CustomizedExceptionAdapterTest {
         SpotAlreadyOccupiedException occEx = new SpotAlreadyOccupiedException("Plaza ya ocupada");
         SpotCannotBeBlockedException blockEx = new SpotCannotBeBlockedException("Plaza ocupada no bloqueable");
         SpotNotAvailableException notAvailableEx = new SpotNotAvailableException("Plaza no disponible");
+        SpotNotOccupiedException notOccEx = new SpotNotOccupiedException("Plaza no ocupada");
+        SpotNotBlockedException notBlockEx = new SpotNotBlockedException("Plaza no bloqueada");
+        NoAvailableSpotException noAvailableEx = new NoAvailableSpotException("Sin plazas disponibles");
 
         assertEquals(HttpStatus.CONFLICT, exceptionAdapter.handleConflict(occEx, request).getStatusCode());
         assertEquals(HttpStatus.CONFLICT, exceptionAdapter.handleConflict(blockEx, request).getStatusCode());
         assertEquals(HttpStatus.CONFLICT, exceptionAdapter.handleConflict(notAvailableEx, request).getStatusCode());
+        assertEquals(HttpStatus.CONFLICT, exceptionAdapter.handleConflict(notOccEx, request).getStatusCode());
+        assertEquals(HttpStatus.CONFLICT, exceptionAdapter.handleConflict(notBlockEx, request).getStatusCode());
+        assertEquals(HttpStatus.CONFLICT, exceptionAdapter.handleConflict(noAvailableEx, request).getStatusCode());
     }
 
     @Test
