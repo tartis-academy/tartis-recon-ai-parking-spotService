@@ -193,6 +193,28 @@ class SpotRestAdapterTest {
     }
 
     @Test
+    @DisplayName("POST /v1/spots/occupy - debe seguir aceptando el payload antiguo con 'type'")
+    void occupy_ShouldAcceptLegacyTypeKey() throws Exception {
+        // QUE HACE:
+        // - Envia el payload que manda stay-service hoy, con la clave 'type'.
+        UUID spotId = UUID.randomUUID();
+        Spot occupiedSpot = Spot.reconstruct(spotId, VehicleType.CAR, SpotStatus.OCCUPIED);
+        SpotResponse mockResponse = new SpotResponse(spotId, VehicleType.CAR, SpotStatus.OCCUPIED);
+
+        when(occupySpotUseCase.execute(VehicleType.CAR)).thenReturn(occupiedSpot);
+        when(spotRestMapper.toResponse(any(SpotDTO.class))).thenReturn(mockResponse);
+
+        // QUE DEBERIA HACER:
+        // Debe resolverlo igual que vehicleType: el alias es lo que permite
+        // desplegar los dos servicios en cualquier orden.
+        mockMvc.perform(post("/v1/spots/occupy")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"type\":\"CAR\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(spotId.toString()));
+    }
+
+    @Test
     @DisplayName("POST /v1/spots/{id}/release deberia retornar 200 OK y la plaza liberada")
     void release_ShouldReturnOk_WhenSpotIsReleased() throws Exception {
         // QUE HACE:
