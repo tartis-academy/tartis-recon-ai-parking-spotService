@@ -49,8 +49,13 @@ public class SpotPersistenceAdapter implements SpotPersistence {
     }
     @Override
 public long countByTypeAndStatus(VehicleType type, SpotStatus status) {
-return repository.countByTypeAndStatus(type, status); 
+return repository.countByTypeAndStatus(type, status);
 }
+
+    @Override
+    public long countByType(VehicleType type) {
+        return repository.countByType(type);
+    }
 
 @Override
     public Optional<Spot> findAndOccupyAvailableSpot(VehicleType type) {

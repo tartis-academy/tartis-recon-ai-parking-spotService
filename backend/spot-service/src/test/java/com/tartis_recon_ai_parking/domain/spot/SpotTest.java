@@ -12,6 +12,7 @@ import com.tartis_recon_ai_parking.domain.spot.exception.SpotCannotBeBlockedExce
 import com.tartis_recon_ai_parking.domain.spot.exception.SpotNotAvailableException;
 import com.tartis_recon_ai_parking.domain.spot.exception.SpotNotBlockedException;
 import com.tartis_recon_ai_parking.domain.spot.exception.SpotNotOccupiedException;
+import com.tartis_recon_ai_parking.domain.spot.exception.SpotTypeChangeNotAllowedException;
 import com.tartis_recon_ai_parking.domain.spot.exception.SpotValidationException;
 
 import java.util.UUID;
@@ -199,5 +200,44 @@ public class SpotTest {
 
         spot.unblock();
         assertEquals(SpotStatus.AVAILABLE, spot.getStatus());
+    }
+
+
+    // =============  CAMBIO DE TIPO  ============= //
+
+    // Test: IN-05/IN-18. Una plaza OCUPADA tiene una estancia en curso asociada,
+    // asi que su tipo no puede cambiar mientras haya un vehiculo dentro.
+    // Resultado esperado: SpotTypeChangeNotAllowedException y plaza original intacta.
+    @Test
+    void changeTypeTo_conPlazaOcupada_deberiaLanzarExcepcion() {
+        Spot spot = Spot.reconstruct(sampleId, VehicleType.CAR, SpotStatus.OCCUPIED);
+
+        assertThrows(SpotTypeChangeNotAllowedException.class, () -> spot.changeTypeTo(VehicleType.MOTORBIKE));
+        assertEquals(VehicleType.CAR, spot.getType());
+    }
+
+    // Test: una plaza libre o en mantenimiento esta vacia, su tipo si puede cambiar.
+    // Resultado esperado: nueva plaza con el tipo nuevo, mismo id y mismo estado.
+    @Test
+    void changeTypeTo_conPlazaLibreOEnMantenimiento_deberiaDevolverPlazaConElTipoNuevo() {
+        Spot libre = Spot.reconstruct(sampleId, VehicleType.CAR, SpotStatus.AVAILABLE);
+        Spot cambiada = libre.changeTypeTo(VehicleType.CAR_PMR);
+
+        assertEquals(VehicleType.CAR_PMR, cambiada.getType());
+        assertEquals(sampleId, cambiada.getId());
+        assertEquals(SpotStatus.AVAILABLE, cambiada.getStatus());
+        assertEquals(VehicleType.CAR, libre.getType());
+
+        Spot mantenimiento = Spot.reconstruct(sampleId, VehicleType.CAR, SpotStatus.UNAVAILABLE);
+        assertEquals(SpotStatus.UNAVAILABLE, mantenimiento.changeTypeTo(VehicleType.MOTORBIKE).getStatus());
+    }
+
+    // Test: el tipo nuevo pasa por la validacion del constructor.
+    // Resultado esperado: SpotValidationException si es nulo.
+    @Test
+    void changeTypeTo_conTipoNulo_deberiaLanzarSpotValidationException() {
+        Spot spot = Spot.reconstruct(sampleId, VehicleType.CAR, SpotStatus.AVAILABLE);
+
+        assertThrows(SpotValidationException.class, () -> spot.changeTypeTo(null));
     }
 }

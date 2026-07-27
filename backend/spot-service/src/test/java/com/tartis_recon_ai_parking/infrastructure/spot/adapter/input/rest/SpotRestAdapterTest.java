@@ -20,6 +20,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 import org.junit.jupiter.api.BeforeEach;
 
+import com.tartis_recon_ai_parking.application.spot.dto.SpotAvailabilityDTO;
 import com.tartis_recon_ai_parking.application.spot.dto.SpotCreateDTO;
 import com.tartis_recon_ai_parking.application.spot.dto.SpotDTO;
 import com.tartis_recon_ai_parking.application.spot.usecase.AvailableSpotUseCase;
@@ -33,6 +34,7 @@ import com.tartis_recon_ai_parking.domain.spot.Spot;
 import com.tartis_recon_ai_parking.domain.spot.SpotStatus;
 import com.tartis_recon_ai_parking.domain.spot.VehicleType;
 import com.tartis_recon_ai_parking.domain.spot.exception.SpotCannotBeBlockedException;
+import com.tartis_recon_ai_parking.infrastructure.spot.adapter.input.rest.dto.response.AvailabilityResponse;
 import com.tartis_recon_ai_parking.infrastructure.spot.adapter.input.rest.dto.response.SpotResponse;
 
 @SpringBootTest
@@ -279,5 +281,72 @@ class SpotRestAdapterTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"status\":\"UNAVAILABLE\"}"))
                 .andExpect(status().isConflict());
+    }
+
+    @Test
+    @DisplayName("GET /v1/spots/availability - debe retornar 200 OK con los contadores del tipo (HU-03)")
+    void checkAvailability_ShouldReturnOk_WithCounts() throws Exception {
+        // QUE HACE:
+        // - Configura el caso de uso y el mapper para el tipo CAR.
+        // - Ejecuta un GET a la ruta del contrato, /v1/spots/availability.
+        SpotAvailabilityDTO availability = new SpotAvailabilityDTO(VehicleType.CAR, 7L, 20L);
+        AvailabilityResponse mockResponse = new AvailabilityResponse(VehicleType.CAR, true, 7L, 20L);
+
+        when(availableSpotUseCase.execute(VehicleType.CAR)).thenReturn(availability);
+        when(spotRestMapper.toResponse(availability)).thenReturn(mockResponse);
+
+        // QUE DEBERIA HACER:
+        // Debe responder en la ruta del openapi.yml y con el cuerpo AvailabilityResponse,
+        // no un booleano suelto.
+        mockMvc.perform(get("/v1/spots/availability").param("type", "CAR"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.type").value("CAR"))
+                .andExpect(jsonPath("$.available").value(true))
+                .andExpect(jsonPath("$.availableCount").value(7))
+                .andExpect(jsonPath("$.totalCount").value(20));
+    }
+
+    @Test
+    @DisplayName("GET /v1/spots/availability sin type - debe retornar 400, no 500")
+    void checkAvailability_ShouldReturnBadRequest_WhenTypeIsMissing() throws Exception {
+        mockMvc.perform(get("/v1/spots/availability"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400));
+    }
+
+    @Test
+    @DisplayName("Ruta inexistente - debe retornar 404, no 500")
+    void unknownPath_ShouldReturnNotFound() throws Exception {
+        mockMvc.perform(get("/v1/spotss"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.status").value(404));
+    }
+
+    @Test
+    @DisplayName("La ruta antigua /available cae en GET /{id} y da 400, no 500")
+    void legacyAvailablePath_ShouldReturnBadRequest() throws Exception {
+        // /v1/spots/available encaja con el mapping /{id} e intenta parsear
+        // "available" como UUID. Antes salia como 500 por el catch-all.
+        mockMvc.perform(get("/v1/spots/available").param("type", "CAR"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400));
+    }
+
+    @Test
+    @DisplayName("Metodo no soportado - debe retornar 405, no 500")
+    void unsupportedMethod_ShouldReturnMethodNotAllowed() throws Exception {
+        mockMvc.perform(delete("/v1/spots/{id}", UUID.randomUUID()))
+                .andExpect(status().isMethodNotAllowed())
+                .andExpect(jsonPath("$.status").value(405));
+    }
+
+    @Test
+    @DisplayName("Content-Type no soportado - debe retornar 415, no 500")
+    void unsupportedMediaType_ShouldReturnUnsupportedMediaType() throws Exception {
+        mockMvc.perform(post("/v1/spots")
+                .contentType(MediaType.TEXT_PLAIN)
+                .content("type=CAR"))
+                .andExpect(status().isUnsupportedMediaType())
+                .andExpect(jsonPath("$.status").value(415));
     }
 }
