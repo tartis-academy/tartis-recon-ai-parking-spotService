@@ -190,6 +190,22 @@ class SpotPersistenceAdapterTest {
         assertThat(count).isEqualTo(5L);
         verify(spotRepository, times(1)).countByTypeAndStatus(VehicleType.CAR, SpotStatus.AVAILABLE);
     }
+
+    @Test
+    @DisplayName("Debe retornar el total de plazas de un tipo sea cual sea su estado")
+    void shouldCountByTypeSuccessfully() {
+        // QUE HACE:
+        // - Configura el repositorio para retornar el total del tipo.
+        // - Ejecuta countByType.
+        when(spotRepository.countByType(VehicleType.CAR)).thenReturn(20L);
+
+        long count = spotPersistenceAdapter.countByType(VehicleType.CAR);
+
+        // QUE DEBERIA HACER:
+        // Debe delegar en el repositorio y devolver el mismo total.
+        assertThat(count).isEqualTo(20L);
+        verify(spotRepository, times(1)).countByType(VehicleType.CAR);
+    }
     @Test
     @DisplayName("Debe comprobar la disponibilidad por tipo con un conteo, sin usar la consulta con bloqueo")
     void shouldCheckAvailabilityByTypeWithoutLocking() {

@@ -5,6 +5,7 @@ import com.tartis_recon_ai_parking.domain.spot.exception.SpotCannotBeBlockedExce
 import com.tartis_recon_ai_parking.domain.spot.exception.SpotNotAvailableException;
 import com.tartis_recon_ai_parking.domain.spot.exception.SpotNotBlockedException;
 import com.tartis_recon_ai_parking.domain.spot.exception.SpotNotOccupiedException;
+import com.tartis_recon_ai_parking.domain.spot.exception.SpotTypeChangeNotAllowedException;
 import com.tartis_recon_ai_parking.domain.spot.exception.SpotValidationException;
 import java.util.UUID;
 
@@ -73,6 +74,16 @@ public final class Spot {
             throw new SpotNotBlockedException("Solo se puede liberar una plaza que se encuentre NO DISPONIBLE");
         }
         this.status = SpotStatus.AVAILABLE;
+    }
+
+    // IN-05/IN-18: si la plaza esta OCUPADA hay una estancia en curso asociada y
+    // el tipo no puede cambiar. El tipo es final, por eso devuelve una plaza nueva.
+    public Spot changeTypeTo(VehicleType newType) {
+        if (this.status == SpotStatus.OCCUPIED) {
+            throw new SpotTypeChangeNotAllowedException(
+                    "No se puede cambiar el tipo de una plaza OCUPADA: hay una estancia en curso asociada (IN-05/IN-18)");
+        }
+        return new Spot(this.id, newType, this.status);
     }
 
 
