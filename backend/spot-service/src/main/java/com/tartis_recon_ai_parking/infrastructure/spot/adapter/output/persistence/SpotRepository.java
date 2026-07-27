@@ -19,6 +19,8 @@ import com.tartis_recon_ai_parking.domain.spot.SpotStatus;
 public interface SpotRepository extends JpaRepository<SpotEntity, UUID> {
     long countByTypeAndStatus(VehicleType type, SpotStatus status);
 
+    long countByType(VehicleType type);
+
     // timeout -2 = SKIP LOCKED.
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @QueryHints(@QueryHint(name = "jakarta.persistence.lock.timeout", value = "-2"))

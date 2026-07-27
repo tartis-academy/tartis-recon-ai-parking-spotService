@@ -11,7 +11,9 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import com.tartis_recon_ai_parking.application.spot.dto.SpotAvailabilityDTO;
 import com.tartis_recon_ai_parking.application.spot.port.output.SpotPersistence;
+import com.tartis_recon_ai_parking.domain.spot.SpotStatus;
 import com.tartis_recon_ai_parking.domain.spot.VehicleType;
 
 @ExtendWith(MockitoExtension.class)
@@ -25,32 +27,43 @@ class AvailableSpotUseCaseTest {
     private AvailableSpotUseCase availableSpotUseCase;
 
     @Test
-    @DisplayName("Debe retornar true si existen plazas disponibles del tipo solicitado")
-    void execute_ShouldReturnTrue_WhenSpotsAreAvailable() {
-        // QUE HACE:
-        // - Simula que la persistencia encuentra plazas disponibles para el tipo dado.
-        when(spotPersistence.existsAvailableByType(VehicleType.CAR)).thenReturn(true);
+    @DisplayName("Debe reportar disponible y los contadores si hay plazas libres del tipo solicitado")
+    void execute_ShouldReportAvailable_WhenSpotsAreAvailable() {
+        when(spotPersistence.countByTypeAndStatus(VehicleType.CAR, SpotStatus.AVAILABLE)).thenReturn(7L);
+        when(spotPersistence.countByType(VehicleType.CAR)).thenReturn(20L);
 
-        boolean result = availableSpotUseCase.execute(VehicleType.CAR);
+        SpotAvailabilityDTO result = availableSpotUseCase.execute(VehicleType.CAR);
 
-        // QUE DEBERIA HACER:
-        // Debe retornar true delegando en el puerto de persistencia.
-        assertThat(result).isTrue();
-        verify(spotPersistence).existsAvailableByType(VehicleType.CAR);
+        assertThat(result.getType()).isEqualTo(VehicleType.CAR);
+        assertThat(result.isAvailable()).isTrue();
+        assertThat(result.getAvailableCount()).isEqualTo(7L);
+        assertThat(result.getTotalCount()).isEqualTo(20L);
     }
 
     @Test
-    @DisplayName("Debe retornar false si no existen plazas disponibles del tipo solicitado")
-    void execute_ShouldReturnFalse_WhenNoSpotsAreAvailable() {
-        // QUE HACE:
-        // - Simula que la persistencia no encuentra plazas disponibles para el tipo dado.
-        when(spotPersistence.existsAvailableByType(VehicleType.MOTORBIKE)).thenReturn(false);
+    @DisplayName("Debe reportar no disponible si no queda ninguna plaza libre del tipo solicitado")
+    void execute_ShouldReportUnavailable_WhenNoSpotsAreAvailable() {
+        when(spotPersistence.countByTypeAndStatus(VehicleType.MOTORBIKE, SpotStatus.AVAILABLE)).thenReturn(0L);
+        when(spotPersistence.countByType(VehicleType.MOTORBIKE)).thenReturn(5L);
 
-        boolean result = availableSpotUseCase.execute(VehicleType.MOTORBIKE);
+        SpotAvailabilityDTO result = availableSpotUseCase.execute(VehicleType.MOTORBIKE);
 
-        // QUE DEBERIA HACER:
-        // Debe retornar false delegando en el puerto de persistencia.
-        assertThat(result).isFalse();
-        verify(spotPersistence).existsAvailableByType(VehicleType.MOTORBIKE);
+        assertThat(result.isAvailable()).isFalse();
+        assertThat(result.getAvailableCount()).isZero();
+        assertThat(result.getTotalCount()).isEqualTo(5L);
+    }
+
+    @Test
+    @DisplayName("RN-10: las plazas en mantenimiento no se cuentan como disponibles")
+    void execute_ShouldNotCountUnavailableSpots() {
+        // El parking tiene 4 plazas del tipo, todas fuera de servicio: total 4, disponibles 0.
+        when(spotPersistence.countByTypeAndStatus(VehicleType.CAR_PMR, SpotStatus.AVAILABLE)).thenReturn(0L);
+        when(spotPersistence.countByType(VehicleType.CAR_PMR)).thenReturn(4L);
+
+        SpotAvailabilityDTO result = availableSpotUseCase.execute(VehicleType.CAR_PMR);
+
+        assertThat(result.isAvailable()).isFalse();
+        assertThat(result.getTotalCount()).isEqualTo(4L);
+        verify(spotPersistence).countByTypeAndStatus(VehicleType.CAR_PMR, SpotStatus.AVAILABLE);
     }
 }

@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.tartis_recon_ai_parking.application.spot.dto.SpotAvailabilityDTO;
 import com.tartis_recon_ai_parking.application.spot.dto.SpotCreateDTO;
 import com.tartis_recon_ai_parking.application.spot.dto.SpotDTO;
 import com.tartis_recon_ai_parking.application.spot.factory.SpotDTOFactory;
@@ -32,6 +33,7 @@ import com.tartis_recon_ai_parking.domain.spot.VehicleType;
 import com.tartis_recon_ai_parking.infrastructure.spot.adapter.input.rest.dto.request.SpotOccupyRequest;
 import com.tartis_recon_ai_parking.infrastructure.spot.adapter.input.rest.dto.request.SpotRequest;
 import com.tartis_recon_ai_parking.infrastructure.spot.adapter.input.rest.dto.request.SpotStatusRequest;
+import com.tartis_recon_ai_parking.infrastructure.spot.adapter.input.rest.dto.response.AvailabilityResponse;
 import com.tartis_recon_ai_parking.infrastructure.spot.adapter.input.rest.dto.response.SpotResponse;
 
 import jakarta.validation.Valid;
@@ -116,9 +118,9 @@ public class SpotRestAdapter {
         return ResponseEntity.ok(spotRestMapper.toResponse(released));
     }
 
-    @GetMapping("/available")
-    public ResponseEntity<Boolean> checkAvailability(@RequestParam VehicleType type) {
-        boolean isAvailable = availableSpotUseCase.execute(type);
-        return ResponseEntity.ok(isAvailable);
+    @GetMapping("/availability")
+    public ResponseEntity<AvailabilityResponse> checkAvailability(@RequestParam VehicleType type) {
+        SpotAvailabilityDTO availability = availableSpotUseCase.execute(type);
+        return ResponseEntity.ok(spotRestMapper.toResponse(availability));
     }
 }

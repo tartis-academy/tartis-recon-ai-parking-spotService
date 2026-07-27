@@ -17,12 +17,13 @@ public class UpdateSpotUseCase {
         this.spotPersistence = spotPersistence;
     }
 
+    // HU-05 CA4. Solo cambia el tipo; el estado tiene sus propios endpoints.
     @Transactional
     public SpotDTO execute(UUID id, SpotCreateDTO updateDTO) {
         Spot existing = spotPersistence.findById(id)
                 .orElseThrow(() -> new SpotNotFoundException("No existe una plaza con id " + id));
 
-        Spot updated = Spot.reconstruct(id, updateDTO.getType(), existing.getStatus());
+        Spot updated = existing.changeTypeTo(updateDTO.getType());
         Spot saved = spotPersistence.save(updated);
         return SpotDTOFactory.from(saved);
     }
