@@ -8,6 +8,7 @@ import com.tartis_recon_ai_parking.domain.spot.SpotStatus;
 import com.tartis_recon_ai_parking.domain.spot.exception.SpotNotFoundException;
 import com.tartis_recon_ai_parking.domain.spot.exception.SpotValidationException;
 import com.tartis_recon_ai_parking.domain.spot.exception.UnsupportedSpotStatusTransitionException;
+import org.springframework.transaction.annotation.Transactional;
 
 public class UpdateSpotStatusUseCase {
 
@@ -21,6 +22,7 @@ public class UpdateSpotStatusUseCase {
      * Solo admite transiciones AVAILABLE <-> UNAVAILABLE. Ocupar y liberar
      * tienen sus propios endpoints (/spots/occupy y /spots/{id}/release).
      */
+    @Transactional
     public Spot execute(UUID id, SpotStatus newStatus) {
         if (newStatus == null) {
             throw new SpotValidationException("El estado solicitado no puede ser nulo");

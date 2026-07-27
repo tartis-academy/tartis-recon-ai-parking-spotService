@@ -2,8 +2,11 @@ package com.tartis_recon_ai_parking.infrastructure.spot.adapter.input.rest.dto.r
 
 import com.tartis_recon_ai_parking.domain.spot.VehicleType;
 
+import jakarta.validation.constraints.NotNull;
+
 public class SpotRequest {
 
+    @NotNull(message = "El tipo de vehículo (type) es obligatorio")
     private VehicleType type;
 
     public SpotRequest() {

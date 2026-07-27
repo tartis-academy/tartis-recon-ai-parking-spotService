@@ -335,6 +335,10 @@ components:
     OccupyRequest:
       type: object
       required: [vehicleType]
+      description: >
+        The legacy key "type" is still accepted as an alias for vehicleType so
+        spot-service and stay-service can be deployed in any order. It is
+        transitional and will be removed once stay-service sends vehicleType.
       properties:
         vehicleType:
           $ref: '#/components/schemas/VehicleType'

@@ -29,6 +29,7 @@ import com.tartis_recon_ai_parking.application.spot.usecase.UpdateSpotStatusUseC
 import com.tartis_recon_ai_parking.application.spot.usecase.UpdateSpotUseCase;
 import com.tartis_recon_ai_parking.domain.spot.Spot;
 import com.tartis_recon_ai_parking.domain.spot.VehicleType;
+import com.tartis_recon_ai_parking.infrastructure.spot.adapter.input.rest.dto.request.SpotOccupyRequest;
 import com.tartis_recon_ai_parking.infrastructure.spot.adapter.input.rest.dto.request.SpotRequest;
 import com.tartis_recon_ai_parking.infrastructure.spot.adapter.input.rest.dto.request.SpotStatusRequest;
 import com.tartis_recon_ai_parking.infrastructure.spot.adapter.input.rest.dto.response.SpotResponse;
@@ -104,8 +105,8 @@ public class SpotRestAdapter {
     }
 
     @PostMapping("/occupy")
-    public ResponseEntity<SpotResponse> occupy(@Valid @RequestBody SpotRequest request) {
-        Spot occupied = occupySpotUseCase.execute(request.getType());
+    public ResponseEntity<SpotResponse> occupy(@Valid @RequestBody SpotOccupyRequest request) {
+        Spot occupied = occupySpotUseCase.execute(request.getVehicleType());
         return ResponseEntity.ok(spotRestMapper.toResponse(SpotDTOFactory.from(occupied)));
     }
 
