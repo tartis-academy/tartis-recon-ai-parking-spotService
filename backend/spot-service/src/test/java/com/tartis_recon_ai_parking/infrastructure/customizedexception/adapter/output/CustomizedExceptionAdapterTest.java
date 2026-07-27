@@ -19,6 +19,11 @@ import org.springframework.validation.FieldError;
 import org.springframework.validation.ObjectError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.dao.CannotAcquireLockException;
+import org.springframework.dao.DataAccessException;
+import org.springframework.dao.DataAccessResourceFailureException;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.QueryTimeoutException;
 import com.tartis_recon_ai_parking.domain.spot.VehicleType;
 import com.tartis_recon_ai_parking.domain.spot.exception.InvalidSpotException;
 import com.tartis_recon_ai_parking.domain.spot.exception.NoAvailableSpotException;
@@ -140,6 +145,67 @@ class CustomizedExceptionAdapterTest {
         assertEquals(HttpStatus.CONFLICT, exceptionAdapter.handleConflict(notOccEx, request).getStatusCode());
         assertEquals(HttpStatus.CONFLICT, exceptionAdapter.handleConflict(notBlockEx, request).getStatusCode());
         assertEquals(HttpStatus.CONFLICT, exceptionAdapter.handleConflict(noAvailableEx, request).getStatusCode());
+    }
+
+    @Test
+    @DisplayName("Debe retornar CONFLICT (409) para violaciones de integridad de datos en BD")
+    void handleDataIntegrityViolation_ShouldReturnConflictStatus() {
+        DataIntegrityViolationException ex = new DataIntegrityViolationException("Unique index violation: spot_number_uk");
+
+        ResponseEntity<ErrorResponse> response = exceptionAdapter.handleDataIntegrityViolation(ex, request);
+
+        assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertEquals(409, response.getBody().status());
+        assertEquals("Conflict", response.getBody().error());
+        assertEquals("Violación de integridad de datos en la persistencia.", response.getBody().message());
+        assertEquals("/v1/spots/test", response.getBody().path());
+    }
+
+    @Test
+    @DisplayName("Debe retornar SERVICE UNAVAILABLE (503) para timeouts y fallos de conexión a la BD")
+    void handleDatabaseUnavailable_ShouldReturnServiceUnavailableStatus() {
+        DataAccessResourceFailureException resourceEx = new DataAccessResourceFailureException("Connection lost");
+        QueryTimeoutException timeoutEx = new QueryTimeoutException("Query execution timed out");
+
+        ResponseEntity<ErrorResponse> resResource = exceptionAdapter.handleDatabaseUnavailable(resourceEx, request);
+        ResponseEntity<ErrorResponse> resTimeout = exceptionAdapter.handleDatabaseUnavailable(timeoutEx, request);
+
+        assertEquals(HttpStatus.SERVICE_UNAVAILABLE, resResource.getStatusCode());
+        assertEquals(503, resResource.getBody().status());
+        assertEquals("Service Unavailable", resResource.getBody().error());
+        assertEquals("El servicio de datos no está disponible temporalmente.", resResource.getBody().message());
+
+        assertEquals(HttpStatus.SERVICE_UNAVAILABLE, resTimeout.getStatusCode());
+        assertEquals(503, resTimeout.getBody().status());
+    }
+
+    @Test
+    @DisplayName("Debe retornar CONFLICT (409) para deadlocks y fallos de bloqueo/concurrencia en BD")
+    void handleConcurrency_ShouldReturnConflictStatus() {
+        CannotAcquireLockException lockEx = new CannotAcquireLockException("Deadlock detected");
+
+        ResponseEntity<ErrorResponse> response = exceptionAdapter.handleConcurrency(lockEx, request);
+
+        assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertEquals(409, response.getBody().status());
+        assertEquals("Conflict", response.getBody().error());
+        assertEquals("El recurso está siendo modificado por otra transacción. Reintente.", response.getBody().message());
+    }
+
+    @Test
+    @DisplayName("Debe retornar INTERNAL SERVER ERROR (500) para errores genéricos de acceso a datos sin exponer el stacktrace")
+    void handleDataAccessException_ShouldReturnInternalServerError() {
+        DataAccessException dataEx = new DataAccessException("Fatal SQL Syntax Error") {};
+
+        ResponseEntity<ErrorResponse> response = exceptionAdapter.handleDataAccessException(dataEx, request);
+
+        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertEquals(500, response.getBody().status());
+        assertEquals("Internal Server Error", response.getBody().error());
+        assertEquals("Ha ocurrido un error en la capa de datos de persistencia.", response.getBody().message());
     }
 
     @Test
