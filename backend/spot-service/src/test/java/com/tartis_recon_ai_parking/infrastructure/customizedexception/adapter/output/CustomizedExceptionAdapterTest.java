@@ -10,6 +10,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockHttpServletRequest;
 
+import org.springframework.http.HttpInputMessage;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import com.tartis_recon_ai_parking.domain.spot.exception.InvalidSpotException;
 import com.tartis_recon_ai_parking.domain.spot.exception.NoAvailableSpotException;
 import com.tartis_recon_ai_parking.domain.spot.exception.SpotAlreadyOccupiedException;
@@ -65,7 +67,7 @@ class CustomizedExceptionAdapterTest {
     }
 
     @Test
-    @DisplayName("Debe retornar BAD REQUEST (400) cuando se lanza InvalidSpotException o validación")
+    @DisplayName("Debe retornar BAD REQUEST (400) cuando se lanza InvalidSpotException")
     void handleBadRequest_ShouldReturnBadRequestStatus() {
         InvalidSpotException exception = new InvalidSpotException("Plaza inválida");
 
@@ -85,8 +87,8 @@ class CustomizedExceptionAdapterTest {
         SpotValidationException valEx = new SpotValidationException("Campo nulo");
         SpotNotOccupiedException notOccEx = new SpotNotOccupiedException("Plaza no ocupada");
         SpotNotBlockedException notBlockEx = new SpotNotBlockedException("Plaza no bloqueada");
-        org.springframework.http.converter.HttpMessageNotReadableException parseEx =
-                new org.springframework.http.converter.HttpMessageNotReadableException("Invalid JSON", (org.springframework.http.HttpInputMessage) null);
+        HttpMessageNotReadableException parseEx =
+                new HttpMessageNotReadableException("Invalid JSON", (HttpInputMessage) null);
 
         assertEquals(HttpStatus.BAD_REQUEST, exceptionAdapter.handleBadRequest(valEx, request).getStatusCode());
         assertEquals(HttpStatus.BAD_REQUEST, exceptionAdapter.handleBadRequest(notOccEx, request).getStatusCode());
