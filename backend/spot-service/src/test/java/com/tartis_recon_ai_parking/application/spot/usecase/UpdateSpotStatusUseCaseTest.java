@@ -22,7 +22,10 @@ import com.tartis_recon_ai_parking.domain.spot.Spot;
 import com.tartis_recon_ai_parking.domain.spot.SpotStatus;
 import com.tartis_recon_ai_parking.domain.spot.VehicleType;
 import com.tartis_recon_ai_parking.domain.spot.exception.SpotCannotBeBlockedException;
+import com.tartis_recon_ai_parking.domain.spot.exception.SpotNotBlockedException;
 import com.tartis_recon_ai_parking.domain.spot.exception.SpotNotFoundException;
+import com.tartis_recon_ai_parking.domain.spot.exception.SpotValidationException;
+import com.tartis_recon_ai_parking.domain.spot.exception.UnsupportedSpotStatusTransitionException;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("UpdateSpotStatusUseCase Tests")
@@ -77,19 +80,36 @@ class UpdateSpotStatusUseCaseTest {
     }
 
     @Test
-    @DisplayName("Debe lanzar SpotCannotBeBlockedException si se solicita OCCUPIED por este endpoint")
+    @DisplayName("Debe lanzar UnsupportedSpotStatusTransitionException si se solicita OCCUPIED por este endpoint")
     void execute_ShouldThrowConflict_WhenOccupiedIsRequested() {
         // QUE HACE:
-        // - Simula una plaza DISPONIBLE y solicita el estado OCCUPIED, reservado a POST /spots/occupy.
+        // - Solicita el estado OCCUPIED, reservado a POST /spots/occupy.
         UUID spotId = UUID.randomUUID();
-        Spot spot = Spot.reconstruct(spotId, VehicleType.CAR, SpotStatus.AVAILABLE);
-
-        when(spotPersistence.findById(spotId)).thenReturn(Optional.of(spot));
 
         // QUE DEBERIA HACER:
-        // Debe lanzar la excepcion de conflicto sin persistir ningun cambio.
+        // Debe lanzar la excepcion de endpoint equivocado, no la de mantenimiento,
+        // y rechazar la peticion sin consultar ni persistir nada.
         assertThatThrownBy(() -> updateSpotStatusUseCase.execute(spotId, SpotStatus.OCCUPIED))
-                .isInstanceOf(SpotCannotBeBlockedException.class);
+                .isInstanceOf(UnsupportedSpotStatusTransitionException.class)
+                .isNotInstanceOf(SpotCannotBeBlockedException.class);
+        verify(spotPersistence, never()).findById(any());
+        verify(spotPersistence, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Debe lanzar SpotValidationException si el estado solicitado es nulo")
+    void execute_ShouldThrowValidation_WhenNewStatusIsNull() {
+        // QUE HACE:
+        // - Invoca el use case directamente con newStatus a null, como haria un
+        //   listener de eventos o un job que no pasa por la validacion del DTO.
+        UUID spotId = UUID.randomUUID();
+
+        // QUE DEBERIA HACER:
+        // Debe fallar rapido con un error de validacion (400) en vez de guardar
+        // la plaza sin cambios y devolver un 200 enganoso.
+        assertThatThrownBy(() -> updateSpotStatusUseCase.execute(spotId, null))
+                .isInstanceOf(SpotValidationException.class);
+        verify(spotPersistence, never()).findById(any());
         verify(spotPersistence, never()).save(any());
     }
 
@@ -111,7 +131,7 @@ class UpdateSpotStatusUseCaseTest {
     }
 
     @Test
-    @DisplayName("Debe lanzar SpotCannotBeBlockedException si la plaza OCCUPIED se quiere pasar a AVAILABLE")
+    @DisplayName("Debe lanzar SpotNotBlockedException si la plaza OCCUPIED se quiere pasar a AVAILABLE")
     void execute_ShouldThrowConflict_WhenOccupiedSpotIsReleasedThroughThisEndpoint() {
         // QUE HACE:
         // - Simula una plaza OCUPADA y solicita AVAILABLE, reservado a POST /spots/{id}/release.
@@ -123,7 +143,7 @@ class UpdateSpotStatusUseCaseTest {
         // QUE DEBERIA HACER:
         // Debe lanzar la excepcion de conflicto sin liberar la plaza.
         assertThatThrownBy(() -> updateSpotStatusUseCase.execute(spotId, SpotStatus.AVAILABLE))
-                .isInstanceOf(SpotCannotBeBlockedException.class);
+                .isInstanceOf(SpotNotBlockedException.class);
         verify(spotPersistence, never()).save(any());
     }
 
@@ -152,13 +172,12 @@ class UpdateSpotStatusUseCaseTest {
         Spot spot = Spot.reconstruct(spotId, VehicleType.CAR, SpotStatus.AVAILABLE);
 
         when(spotPersistence.findById(spotId)).thenReturn(Optional.of(spot));
-        when(spotPersistence.save(any(Spot.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         Spot result = updateSpotStatusUseCase.execute(spotId, SpotStatus.AVAILABLE);
 
         // QUE DEBERIA HACER:
-        // Debe mantener el estado AVAILABLE sin error y seguir persistiendo la plaza.
+        // Debe mantener el estado AVAILABLE sin error y sin lanzar un UPDATE inutil.
         assertThat(result.getStatus()).isEqualTo(SpotStatus.AVAILABLE);
-        verify(spotPersistence).save(spot);
+        verify(spotPersistence, never()).save(any());
     }
 }

@@ -10,6 +10,7 @@ import com.tartis_recon_ai_parking.domain.spot.exception.SpotNotBlockedException
 import com.tartis_recon_ai_parking.domain.spot.exception.SpotNotFoundException;
 import com.tartis_recon_ai_parking.domain.spot.exception.SpotNotOccupiedException;
 import com.tartis_recon_ai_parking.domain.spot.exception.SpotValidationException;
+import com.tartis_recon_ai_parking.domain.spot.exception.UnsupportedSpotStatusTransitionException;
 import com.tartis_recon_ai_parking.infrastructure.customizedexception.adapter.output.dto.ErrorResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.Instant;
@@ -58,7 +59,8 @@ public class CustomizedExceptionAdapter {
             SpotNotAvailableException.class,
             SpotNotOccupiedException.class,
             SpotNotBlockedException.class,
-            NoAvailableSpotException.class
+            NoAvailableSpotException.class,
+            UnsupportedSpotStatusTransitionException.class
     })
     public ResponseEntity<ErrorResponse> handleConflict(SpotDomainException ex, HttpServletRequest request) {
         return build(HttpStatus.CONFLICT, ex.getMessage(), request);
