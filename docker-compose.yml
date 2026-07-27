@@ -1,8 +1,13 @@
-# PostgreSQL dedicado de spot-service (database-per-service).
+# PostgreSQL dedicado de spot-service (database-per-service real).
+#
+# NO es el Postgres del dia a dia en dev (ese es el compartido con 5 schemas,
+# uno por microservicio, que vive en el repo de infra y se levanta
+# con su ./setup.sh). Este es para el perfil 'prod' (application-prod.properties)
+# o para levantar este servicio aislado. Ver Convenciones del proyecto Parking S4.
 #
 # pgAdmin y SonarQube NO van aqui: son herramientas compartidas y viven en el
-# compose de la raiz del repo de infraestructura. Este compose solo gestiona la
-# base de datos de este microservicio.
+# compose del repo de infra. Este compose solo gestiona la
+# base de datos DEDICADA de este microservicio.
 #
 # Se conecta a la red externa parking-shared para que pgAdmin pueda registrar
 # esta BD. Crear la red una vez con:

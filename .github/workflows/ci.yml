@@ -1,0 +1,109 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main, release]
+  push:
+    branches: [main, release]
+
+# Si llegan dos push seguidos, cancela el run anterior: no interesa el
+# resultado de un commit que ya esta superado.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    # El pom NO esta en la raiz del repo, vive aqui. Sin esto, mvnw no
+    # encuentra proyecto y el job muere en el primer paso.
+    defaults:
+      run:
+        working-directory: backend/spot-service
+
+    services:
+      # Postgres desechable, solo para este job. No tiene relacion con el
+      # docker-compose.yml del repo: spring-boot-docker-compose esta
+      # desactivado durante los tests (spring.docker.compose.skip.in-tests).
+      #
+      # Hace falta porque SpotServiceApplicationTests y SpotRestAdapterTest son
+      # @SpringBootTest: levantan el contexto entero, JPA incluido, y sin
+      # DataSource real no arrancan.
+      #
+      # Usuario, password y base deben coincidir con las variables SPOT_DB_*
+      # del paso "Build + test", que son las que lee
+      # src/test/resources/application.properties.
+      postgres:
+        image: postgres:15.18-alpine
+        env:
+          POSTGRES_USER: spot_user
+          POSTGRES_PASSWORD: spot_pass
+          POSTGRES_DB: spot_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U spot_user -d spot_db"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Historial completo: SonarCloud lo necesita para calcular el
+          # "new code" (blame por commit) al evaluar el quality gate.
+          fetch-depth: 0
+
+      - uses: actions/setup-java@v4
+        with:
+          # El pom declara java.version=17 (bytecode target via
+          # maven.compiler.release), pero el JDK del runner puede ser mas
+          # nuevo: Lombok 1.18.30 compila bien con JDK 21 (no soporta JDK 25).
+          # SonarQube Cloud dejo de aceptar analisis corridos con JDK 17, asi
+          # que el runner tiene que ser 21+ para que el paso de sonar:sonar
+          # no falle con "The version of Java (17) used to run this analysis
+          # is deprecated".
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+
+      # Los tests ya corren: SpotEntity tiene @Entity/@Id y el dominio esta
+      # implementado, asi que el contexto de @SpringBootTest arranca.
+      #
+      # verify ya compila: no hace falta un paso de compile aparte.
+      # jacoco-maven-plugin (pom.xml) genera target/site/jacoco/jacoco.xml
+      # en esta misma fase, que es el reporte que consume SonarCloud.
+      - name: Build + test
+        env:
+          SPOT_DB_HOST: localhost
+          # El service container expone el 5432 directo. El 5434 del compose es
+          # solo el mapeo en local para no chocar con otros Postgres.
+          SPOT_DB_PORT: 5432
+          SPOT_DB_NAME: spot_db
+          SPOT_DB_USER: spot_user
+          SPOT_DB_PASSWORD: spot_pass
+        run: ./mvnw -B verify
+
+      - name: Cache paquetes de SonarCloud
+        uses: actions/cache@v4
+        with:
+          path: ~/.sonar/cache
+          key: ${{ runner.os }}-sonar
+          restore-keys: ${{ runner.os }}-sonar
+
+      # Requiere el secret SONAR_TOKEN del repo.
+      - name: Analisis SonarCloud (quality gate)
+        continue-on-error: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: >
+          ./mvnw -B sonar:sonar
+          -Dsonar.projectKey=1dd0rv_tartis-recon-ai-parking-spotService
+          -Dsonar.organization=1dd0rv
+          -Dsonar.host.url=https://sonarcloud.io
+          -Dsonar.qualitygate.wait=true
