@@ -19,16 +19,15 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.tartis_recon_ai_parking.application.spot.dto.SpotCreateDTO;
 import com.tartis_recon_ai_parking.application.spot.dto.SpotDTO;
+import com.tartis_recon_ai_parking.application.spot.factory.SpotDTOFactory;
 import com.tartis_recon_ai_parking.application.spot.usecase.AvailableSpotUseCase;
 import com.tartis_recon_ai_parking.application.spot.usecase.CreateSpotUseCase;
 import com.tartis_recon_ai_parking.application.spot.usecase.GetSpotUseCase;
-import com.tartis_recon_ai_parking.application.spot.usecase.UpdateSpotUseCase;
-import com.tartis_recon_ai_parking.domain.spot.VehicleType;
-import com.tartis_recon_ai_parking.application.spot.usecase.CreateSpotUseCase;
-import com.tartis_recon_ai_parking.application.spot.usecase.GetSpotUseCase;
-import com.tartis_recon_ai_parking.application.spot.usecase.UpdateSpotUseCase;
 import com.tartis_recon_ai_parking.application.spot.usecase.OccupySpotUseCase;
 import com.tartis_recon_ai_parking.application.spot.usecase.ReleaseSpotUseCase;
+import com.tartis_recon_ai_parking.application.spot.usecase.UpdateSpotUseCase;
+import com.tartis_recon_ai_parking.domain.spot.Spot;
+import com.tartis_recon_ai_parking.domain.spot.VehicleType;
 import com.tartis_recon_ai_parking.infrastructure.spot.adapter.input.rest.dto.request.SpotRequest;
 import com.tartis_recon_ai_parking.infrastructure.spot.adapter.input.rest.dto.response.SpotResponse;
 
@@ -54,7 +53,7 @@ public class SpotRestAdapter {
             ReleaseSpotUseCase releaseSpotUseCase,
             UpdateSpotUseCase updateSpotStatusUseCase,
             SpotRestMapper spotRestMapper,
-        AvailableSpotUseCase availableSpotUseCase) {
+            AvailableSpotUseCase availableSpotUseCase) {
         this.createSpotUseCase = createSpotUseCase;
         this.getSpotUseCase = getSpotUseCase;
         this.updateSpotUseCase = updateSpotUseCase;
@@ -105,9 +104,8 @@ public class SpotRestAdapter {
 
     @PostMapping("/occupy")
     public ResponseEntity<SpotResponse> occupy(@Valid @RequestBody SpotRequest request) {
-        com.tartis_recon_ai_parking.domain.spot.Spot occupied = occupySpotUseCase.execute(request.getType());
-        return ResponseEntity.ok(spotRestMapper
-                .toResponse(com.tartis_recon_ai_parking.application.spot.factory.SpotDTOFactory.from(occupied)));
+        Spot occupied = occupySpotUseCase.execute(request.getType());
+        return ResponseEntity.ok(spotRestMapper.toResponse(SpotDTOFactory.from(occupied)));
     }
 
     @PostMapping("/{id}/release")

@@ -66,11 +66,9 @@ return repository.countByTypeAndStatus(type, status);
                 });
     }
 
-
     @Override
     @Transactional(readOnly = true)
     public boolean existsAvailableByType(VehicleType type) {
-        // isPresent para verificar q es un resultado presente
         return repository.findFirstAvailable(type).isPresent();
     }
 }

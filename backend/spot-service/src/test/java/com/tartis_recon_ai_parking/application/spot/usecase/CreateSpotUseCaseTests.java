@@ -95,10 +95,6 @@ public class CreateSpotUseCaseTests {
 
     @Test
     void execute_deberiaDevolverDtoBasadoEnLaPlazaGuardadaDevueltaPorPersistencia() {
-        // QUE HACE:
-        // - Prepara un DTO inicial y una plaza ya persistida con estado distinto.
-        // - Configura el mock para devolver la plaza simulada al guardar.
-        // - Ejecuta el método execute.
         SpotCreateDTO createDTO = new SpotCreateDTO(VehicleType.CAR);
         Spot persistedSpot = Spot.create(VehicleType.CAR);
         persistedSpot.occupy();
@@ -107,26 +103,21 @@ public class CreateSpotUseCaseTests {
 
         SpotDTO result = useCase.execute(createDTO);
 
-        // QUE DEBERIA HACER:
-        // Debe devolver un DTO cuyos datos provengan del objeto devuelto por save(), no del enviado.
         assertEquals(persistedSpot.getId(), result.getId());
         assertEquals(SpotStatus.OCCUPIED, result.getStatus());
     }
 
     @Test
     void execute_deberiaLanzarExcepcionConTipoNulo() {
-        // QUE HACE:
-        // - Prepara un DTO con un tipo nulo.
-        // - Intenta ejecutar la creación.
+
         SpotCreateDTO createDTO = new SpotCreateDTO(null);
         
         org.junit.jupiter.api.Assertions.assertThrows(
-            com.tartis_recon_ai_parking.domain.spot.exception.InvalidSpotException.class, 
+            com.tartis_recon_ai_parking.domain.spot.exception.SpotValidationException.class, 
             () -> useCase.execute(createDTO)
         );
 
-        // QUE DEBERIA HACER:
-        // Debe lanzar InvalidSpotException y asegurar que nunca se llamó a la persistencia.
+    
         verify(spotPersistence, never()).save(any(Spot.class));
     }
 }
