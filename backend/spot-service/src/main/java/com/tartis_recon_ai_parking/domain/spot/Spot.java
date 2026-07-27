@@ -1,6 +1,10 @@
 package com.tartis_recon_ai_parking.domain.spot;
 
-import com.tartis_recon_ai_parking.domain.spot.exception.InvalidSpotException;
+import com.tartis_recon_ai_parking.domain.spot.exception.SpotAlreadyOccupiedException;
+import com.tartis_recon_ai_parking.domain.spot.exception.SpotCannotBeBlockedException;
+import com.tartis_recon_ai_parking.domain.spot.exception.SpotNotBlockedException;
+import com.tartis_recon_ai_parking.domain.spot.exception.SpotNotOccupiedException;
+import com.tartis_recon_ai_parking.domain.spot.exception.SpotValidationException;
 import java.util.UUID;
 
 public final class Spot {
@@ -31,9 +35,9 @@ public final class Spot {
 
     private void validateData(UUID id, VehicleType type, SpotStatus status){
 
-        if (id == null) throw new InvalidSpotException("El id de la plaza no puede ser nulo");
-        if (type == null) throw new InvalidSpotException("El tipo de vehículo de la plaza no puede ser nulo");
-        if (status == null) throw new InvalidSpotException("El estado de la plaza no puede ser nulo");
+        if (id == null) throw new SpotValidationException("El id de la plaza no puede ser nulo");
+        if (type == null) throw new SpotValidationException("El tipo de vehículo de la plaza no puede ser nulo");
+        if (status == null) throw new SpotValidationException("El estado de la plaza no puede ser nulo");
 
     }
 
@@ -41,28 +45,28 @@ public final class Spot {
     // =============  STATE TRANSITIONS  ============= //
     public void occupy() {
         if (this.status != SpotStatus.AVAILABLE) {
-            throw new InvalidSpotException("Solo se debe ocupar una plaza que esté DISPONIBLE");
+            throw new SpotAlreadyOccupiedException("Solo se debe ocupar una plaza que esté DISPONIBLE");
         }
         this.status = SpotStatus.OCCUPIED;
     }
 
     public void release() {
         if (this.status != SpotStatus.OCCUPIED) {
-            throw new InvalidSpotException("Solo se debe liberar una plaza que se encuentre ya OCUPADA");
+            throw new SpotNotOccupiedException("Solo se debe liberar una plaza que se encuentre ya OCUPADA");
         }
         this.status = SpotStatus.AVAILABLE;
     }
 
     public void blockForMaintenance() {
         if (this.status != SpotStatus.AVAILABLE) {
-            throw new InvalidSpotException("Para poner una plaza en mantenimiento, debe estar DISPONIBLE");
+            throw new SpotCannotBeBlockedException("Para poner una plaza en mantenimiento, debe estar DISPONIBLE");
         }
         this.status = SpotStatus.UNAVAILABLE;
     }
 
     public void unblock() {
         if (this.status != SpotStatus.UNAVAILABLE) {
-            throw new InvalidSpotException("Solo se puede liberar una plaza que se encuentre NO DISPONIBLE");
+            throw new SpotNotBlockedException("Solo se puede liberar una plaza que se encuentre NO DISPONIBLE");
         }
         this.status = SpotStatus.AVAILABLE;
     }
