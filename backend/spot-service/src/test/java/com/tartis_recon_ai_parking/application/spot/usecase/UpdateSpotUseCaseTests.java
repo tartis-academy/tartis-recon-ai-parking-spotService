@@ -10,6 +10,7 @@ import com.tartis_recon_ai_parking.domain.spot.Spot;
 import com.tartis_recon_ai_parking.domain.spot.SpotStatus;
 import com.tartis_recon_ai_parking.domain.spot.VehicleType;
 import com.tartis_recon_ai_parking.domain.spot.exception.SpotNotFoundException;
+import com.tartis_recon_ai_parking.domain.spot.exception.SpotValidationException;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -129,22 +130,17 @@ public class UpdateSpotUseCaseTests {
 
     @Test
     void execute_conTipoNulo_deberiaLanzarExcepcion() {
-        // QUE HACE:
-        // - Se prepara un DTO con tipo nulo.
-        // - Se ejecuta la función de actualizar sobre una plaza válida.
         UUID id = UUID.randomUUID();
         Spot existing = Spot.reconstruct(id, VehicleType.CAR, SpotStatus.AVAILABLE);
         SpotCreateDTO updateDTO = new SpotCreateDTO(null);
 
         when(spotPersistence.findById(id)).thenReturn(Optional.of(existing));
 
-        org.junit.jupiter.api.Assertions.assertThrows(
-            com.tartis_recon_ai_parking.domain.spot.exception.InvalidSpotException.class, 
+        assertThrows(
+            SpotValidationException.class, 
             () -> useCase.execute(id, updateDTO)
         );
 
-        // QUE DEBERIA HACER:
-        // Debe lanzar InvalidSpotException y asegurar que la plaza no se intentó persistir.
         verify(spotPersistence, never()).save(any(Spot.class));
     }
 }
