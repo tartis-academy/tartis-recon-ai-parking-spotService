@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 
 import com.tartis_recon_ai_parking.domain.spot.exception.SpotAlreadyOccupiedException;
 import com.tartis_recon_ai_parking.domain.spot.exception.SpotCannotBeBlockedException;
+import com.tartis_recon_ai_parking.domain.spot.exception.SpotNotAvailableException;
 import com.tartis_recon_ai_parking.domain.spot.exception.SpotNotBlockedException;
 import com.tartis_recon_ai_parking.domain.spot.exception.SpotNotOccupiedException;
 import com.tartis_recon_ai_parking.domain.spot.exception.SpotValidationException;
@@ -88,7 +89,7 @@ public class SpotTest {
     void occupy_desdeUnavailable_deberiaLanzarExcepcion() {
         Spot spot = Spot.reconstruct(sampleId, sampleType, SpotStatus.UNAVAILABLE);
 
-        assertThrows(SpotAlreadyOccupiedException.class, spot::occupy);
+        assertThrows(SpotNotAvailableException.class, spot::occupy);
         assertEquals(SpotStatus.UNAVAILABLE, spot.getStatus());
     }
 

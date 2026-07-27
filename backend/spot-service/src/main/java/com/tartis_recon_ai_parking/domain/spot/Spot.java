@@ -2,6 +2,7 @@ package com.tartis_recon_ai_parking.domain.spot;
 
 import com.tartis_recon_ai_parking.domain.spot.exception.SpotAlreadyOccupiedException;
 import com.tartis_recon_ai_parking.domain.spot.exception.SpotCannotBeBlockedException;
+import com.tartis_recon_ai_parking.domain.spot.exception.SpotNotAvailableException;
 import com.tartis_recon_ai_parking.domain.spot.exception.SpotNotBlockedException;
 import com.tartis_recon_ai_parking.domain.spot.exception.SpotNotOccupiedException;
 import com.tartis_recon_ai_parking.domain.spot.exception.SpotValidationException;
@@ -44,8 +45,11 @@ public final class Spot {
 
     // =============  STATE TRANSITIONS  ============= //
     public void occupy() {
-        if (this.status != SpotStatus.AVAILABLE) {
-            throw new SpotAlreadyOccupiedException("Solo se debe ocupar una plaza que esté DISPONIBLE");
+        if (this.status == SpotStatus.OCCUPIED) {
+            throw new SpotAlreadyOccupiedException("Solo se debe ocupar una plaza que se encuentre DISPONIBLE (la plaza ya está ocupada)");
+        }
+        if (this.status == SpotStatus.UNAVAILABLE) {
+            throw new SpotNotAvailableException("No se puede ocupar una plaza que se encuentra NO DISPONIBLE (en mantenimiento)");
         }
         this.status = SpotStatus.OCCUPIED;
     }

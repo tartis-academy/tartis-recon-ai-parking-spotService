@@ -16,6 +16,7 @@ import com.tartis_recon_ai_parking.domain.spot.exception.InvalidSpotException;
 import com.tartis_recon_ai_parking.domain.spot.exception.NoAvailableSpotException;
 import com.tartis_recon_ai_parking.domain.spot.exception.SpotAlreadyOccupiedException;
 import com.tartis_recon_ai_parking.domain.spot.exception.SpotCannotBeBlockedException;
+import com.tartis_recon_ai_parking.domain.spot.exception.SpotNotAvailableException;
 import com.tartis_recon_ai_parking.domain.spot.exception.SpotNotBlockedException;
 import com.tartis_recon_ai_parking.domain.spot.exception.SpotNotFoundException;
 import com.tartis_recon_ai_parking.domain.spot.exception.SpotNotOccupiedException;
@@ -78,6 +79,7 @@ class CustomizedExceptionAdapterTest {
         NoAvailableSpotException noAvailEx = new NoAvailableSpotException("Sin plazas disponibles");
         SpotAlreadyOccupiedException occEx = new SpotAlreadyOccupiedException("Plaza ya ocupada");
         SpotCannotBeBlockedException blockEx = new SpotCannotBeBlockedException("Plaza ocupada no bloqueable");
+        SpotNotAvailableException notAvailableEx = new SpotNotAvailableException("Plaza no disponible");
 
         ResponseEntity<Map<String, Object>> response = exceptionAdapter.handleConflict(noAvailEx);
 
@@ -89,5 +91,6 @@ class CustomizedExceptionAdapterTest {
 
         assertEquals(HttpStatus.CONFLICT, exceptionAdapter.handleConflict(occEx).getStatusCode());
         assertEquals(HttpStatus.CONFLICT, exceptionAdapter.handleConflict(blockEx).getStatusCode());
+        assertEquals(HttpStatus.CONFLICT, exceptionAdapter.handleConflict(notAvailableEx).getStatusCode());
     }
 }

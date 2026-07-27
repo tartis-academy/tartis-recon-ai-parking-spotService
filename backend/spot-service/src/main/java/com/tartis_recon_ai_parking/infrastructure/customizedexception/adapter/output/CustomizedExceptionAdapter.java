@@ -4,6 +4,8 @@ import com.tartis_recon_ai_parking.domain.spot.exception.InvalidSpotException;
 import com.tartis_recon_ai_parking.domain.spot.exception.NoAvailableSpotException;
 import com.tartis_recon_ai_parking.domain.spot.exception.SpotAlreadyOccupiedException;
 import com.tartis_recon_ai_parking.domain.spot.exception.SpotCannotBeBlockedException;
+import com.tartis_recon_ai_parking.domain.spot.exception.SpotDomainException;
+import com.tartis_recon_ai_parking.domain.spot.exception.SpotNotAvailableException;
 import com.tartis_recon_ai_parking.domain.spot.exception.SpotNotBlockedException;
 import com.tartis_recon_ai_parking.domain.spot.exception.SpotNotFoundException;
 import com.tartis_recon_ai_parking.domain.spot.exception.SpotNotOccupiedException;
@@ -29,16 +31,17 @@ public class CustomizedExceptionAdapter {
             SpotNotOccupiedException.class,
             SpotNotBlockedException.class
     })
-    public ResponseEntity<Map<String, Object>> handleBadRequest(RuntimeException ex) {
+    public ResponseEntity<Map<String, Object>> handleBadRequest(SpotDomainException ex) {
         return build(HttpStatus.BAD_REQUEST, ex.getMessage());
     }
 
     @ExceptionHandler({
             NoAvailableSpotException.class,
             SpotAlreadyOccupiedException.class,
-            SpotCannotBeBlockedException.class
+            SpotCannotBeBlockedException.class,
+            SpotNotAvailableException.class
     })
-    public ResponseEntity<Map<String, Object>> handleConflict(RuntimeException ex) {
+    public ResponseEntity<Map<String, Object>> handleConflict(SpotDomainException ex) {
         return build(HttpStatus.CONFLICT, ex.getMessage());
     }
 
