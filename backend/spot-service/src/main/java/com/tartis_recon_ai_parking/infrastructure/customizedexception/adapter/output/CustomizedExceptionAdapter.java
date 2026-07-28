@@ -1,6 +1,6 @@
 package com.tartis_recon_ai_parking.infrastructure.customizedexception.adapter.output;
 
-import com.tartis_recon_ai_parking.domain.spot.exception.ConcurrentSpotModificationException;
+
 import com.tartis_recon_ai_parking.domain.spot.exception.InvalidSpotException;
 import com.tartis_recon_ai_parking.domain.spot.exception.NoAvailableSpotException;
 import com.tartis_recon_ai_parking.domain.spot.exception.SpotAlreadyOccupiedException;
@@ -14,7 +14,6 @@ import com.tartis_recon_ai_parking.domain.spot.exception.SpotValidationException
 import com.tartis_recon_ai_parking.infrastructure.customizedexception.adapter.output.dto.ErrorResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import java.sql.SQLException;
-import java.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.CannotAcquireLockException;
@@ -131,20 +130,14 @@ public class CustomizedExceptionAdapter {
     }
 
 
-    @ExceptionHandler(ConcurrentSpotModificationException.class)
-    public ResponseEntity<Map<String, Object>> handleConcurrentModification(ConcurrentSpotModificationException ex) {
-        return build(HttpStatus.CONFLICT, ex.getMessage());
-    }
-
-
-    private ResponseEntity<ErrorResponse> build(HttpStatus status, String message, HttpServletRequest request) {
+     private ResponseEntity<ErrorResponse> build(HttpStatus status, String message, HttpServletRequest request) {
         ErrorResponse body = new ErrorResponse(
-                Instant.now().toString(),
-                status.value(),
-                status.getReasonPhrase(),
-                message,
-                request.getRequestURI());
+                java.time.Instant.now().toString(), // 1. String (Timestamp)
+                status.value(),                     // 2. int (Estado, ej: 404)
+                status.getReasonPhrase(),           // 3. String (Título, ej: "Not Found")
+                message,                            // 4. String (Detalle del error)
+                request != null ? request.getRequestURI() : "" // 5. String (Ruta)
+        );
         return ResponseEntity.status(status).body(body);
-
     }
 }
