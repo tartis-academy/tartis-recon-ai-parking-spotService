@@ -2,6 +2,7 @@ package com.tartis_recon_ai_parking.application.spot.usecase;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.tartis_recon_ai_parking.application.spot.dto.SpotCreateDTO;
 import com.tartis_recon_ai_parking.application.spot.dto.SpotDTO;
@@ -9,6 +10,7 @@ import com.tartis_recon_ai_parking.application.spot.port.output.SpotPersistence;
 import com.tartis_recon_ai_parking.domain.spot.Spot;
 import com.tartis_recon_ai_parking.domain.spot.SpotStatus;
 import com.tartis_recon_ai_parking.domain.spot.VehicleType;
+import com.tartis_recon_ai_parking.domain.spot.exception.SpotValidationException;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -95,10 +97,6 @@ public class CreateSpotUseCaseTests {
 
     @Test
     void execute_deberiaDevolverDtoBasadoEnLaPlazaGuardadaDevueltaPorPersistencia() {
-        // QUE HACE:
-        // - Prepara un DTO inicial y una plaza ya persistida con estado distinto.
-        // - Configura el mock para devolver la plaza simulada al guardar.
-        // - Ejecuta el método execute.
         SpotCreateDTO createDTO = new SpotCreateDTO(VehicleType.CAR);
         Spot persistedSpot = Spot.create(VehicleType.CAR);
         persistedSpot.occupy();
@@ -107,26 +105,21 @@ public class CreateSpotUseCaseTests {
 
         SpotDTO result = useCase.execute(createDTO);
 
-        // QUE DEBERIA HACER:
-        // Debe devolver un DTO cuyos datos provengan del objeto devuelto por save(), no del enviado.
         assertEquals(persistedSpot.getId(), result.getId());
         assertEquals(SpotStatus.OCCUPIED, result.getStatus());
     }
 
     @Test
     void execute_deberiaLanzarExcepcionConTipoNulo() {
-        // QUE HACE:
-        // - Prepara un DTO con un tipo nulo.
-        // - Intenta ejecutar la creación.
+
         SpotCreateDTO createDTO = new SpotCreateDTO(null);
         
-        org.junit.jupiter.api.Assertions.assertThrows(
-            com.tartis_recon_ai_parking.domain.spot.exception.InvalidSpotException.class, 
+        assertThrows(
+            SpotValidationException.class, 
             () -> useCase.execute(createDTO)
         );
 
-        // QUE DEBERIA HACER:
-        // Debe lanzar InvalidSpotException y asegurar que nunca se llamó a la persistencia.
+    
         verify(spotPersistence, never()).save(any(Spot.class));
     }
 }
