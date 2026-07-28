@@ -8,6 +8,8 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
+
 import java.util.UUID;
 
 /**
@@ -28,6 +30,10 @@ public class SpotEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)
     private SpotStatus status;
+
+    @Version
+    @Column(name = "version", nullable = false)
+    private Long version;
 
     protected SpotEntity() {
         // Requerido por JPA/Hibernate.
@@ -55,5 +61,13 @@ public class SpotEntity {
 
     public void setStatus(SpotStatus status) {
         this.status = status;
+    }
+
+    public Long getVersion() {
+        return version;
+    }
+
+    public void setVersion(Long version) {
+        this.version = version;
     }
 }

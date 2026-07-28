@@ -2,11 +2,13 @@ package com.tartis_recon_ai_parking.infrastructure.spot.adapter.output.persisten
 
 
 import com.tartis_recon_ai_parking.domain.spot.VehicleType;
+import com.tartis_recon_ai_parking.domain.spot.exception.ConcurrentSpotModificationException;
 import com.tartis_recon_ai_parking.domain.spot.SpotStatus;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.stereotype.Component;
 
 import com.tartis_recon_ai_parking.application.spot.port.output.SpotPersistence;
@@ -29,8 +31,14 @@ public class SpotPersistenceAdapter implements SpotPersistence {
     @Override
     @Transactional
     public Spot save(Spot spot) {
-        SpotEntity saved = repository.save(mapper.toEntity(spot));
-        return mapper.toDomain(saved);
+        try {
+            SpotEntity saved = repository.save(mapper.toEntity(spot));
+            return mapper.toDomain(saved);
+        } catch (OptimisticLockingFailureException e) {
+            throw new ConcurrentSpotModificationException(
+                    "La plaza " + spot.getId() + " fue modificada por otra operacion "
+                            + "justo antes; vuelve a intentarlo con los datos actuales.");
+        }
     }
 
     @Override

@@ -1,5 +1,6 @@
 package com.tartis_recon_ai_parking.infrastructure.customizedexception.adapter.output;
 
+import com.tartis_recon_ai_parking.domain.spot.exception.ConcurrentSpotModificationException;
 import com.tartis_recon_ai_parking.domain.spot.exception.InvalidSpotException;
 import com.tartis_recon_ai_parking.domain.spot.exception.NoAvailableSpotException;
 import com.tartis_recon_ai_parking.domain.spot.exception.SpotAlreadyOccupiedException;
@@ -129,6 +130,13 @@ public class CustomizedExceptionAdapter {
         return build(HttpStatus.INTERNAL_SERVER_ERROR, "Ha ocurrido un error interno en el servidor", request);
     }
 
+
+    @ExceptionHandler(ConcurrentSpotModificationException.class)
+    public ResponseEntity<Map<String, Object>> handleConcurrentModification(ConcurrentSpotModificationException ex) {
+        return build(HttpStatus.CONFLICT, ex.getMessage());
+    }
+
+
     private ResponseEntity<ErrorResponse> build(HttpStatus status, String message, HttpServletRequest request) {
         ErrorResponse body = new ErrorResponse(
                 Instant.now().toString(),
@@ -137,5 +145,6 @@ public class CustomizedExceptionAdapter {
                 message,
                 request.getRequestURI());
         return ResponseEntity.status(status).body(body);
+
     }
 }
