@@ -1,3 +1,5 @@
+package com.tartis_recon_ai_parking.infrastructure.customizedexception.adapter.output;
+
 import com.tartis_recon_ai_parking.domain.spot.exception.InvalidSpotException;
 import com.tartis_recon_ai_parking.domain.spot.exception.NoAvailableSpotException;
 import com.tartis_recon_ai_parking.domain.spot.exception.SpotAlreadyOccupiedException;
@@ -13,9 +15,6 @@ import com.tartis_recon_ai_parking.domain.spot.exception.UnsupportedSpotStatusTr
 import com.tartis_recon_ai_parking.infrastructure.customizedexception.adapter.output.dto.ErrorResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import java.sql.SQLException;
-import java.time.Instant;
-
-// --- Importaciones de feature/rupturaDB (BD y Logs) ---
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.CannotAcquireLockException;
@@ -25,8 +24,6 @@ import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.dao.QueryTimeoutException;
-
-// --- Importaciones de release y Base (Web, HTTP, MVC) ---
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -40,15 +37,10 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
-
 @RestControllerAdvice
 public class CustomizedExceptionAdapter {
 
     private static final Logger log = LoggerFactory.getLogger(CustomizedExceptionAdapter.class);
-
-    // ==========================================
-    // EXCEPCIONES DE DOMINIO Y NAVEGACIÓN
-    // ==========================================
 
     @ExceptionHandler(SpotNotFoundException.class)
     public ResponseEntity<ErrorResponse> handleNotFound(SpotNotFoundException ex, HttpServletRequest request) {
@@ -83,8 +75,6 @@ public class CustomizedExceptionAdapter {
         return build(HttpStatus.BAD_REQUEST, message, request);
     }
 
-    // Sin estos tres handlers las excepciones estandar de MVC caen en el catch-all
-    // de Exception y un 404/405/415 sale como 500.
     @ExceptionHandler(NoResourceFoundException.class)
     public ResponseEntity<ErrorResponse> handleNoResource(NoResourceFoundException ex, HttpServletRequest request) {
         return build(HttpStatus.NOT_FOUND, "El recurso solicitado no existe.", request);
@@ -163,14 +153,15 @@ public class CustomizedExceptionAdapter {
         log.error("Excepción no controlada en servidor en {}: {}", request.getRequestURI(), ex.getMessage(), ex);
         return build(HttpStatus.INTERNAL_SERVER_ERROR, "Ha ocurrido un error interno en el servidor", request);
     }
-
+    
     private ResponseEntity<ErrorResponse> build(HttpStatus status, String message, HttpServletRequest request) {
         ErrorResponse body = new ErrorResponse(
-                Instant.now().toString(),
-                status.value(),
-                status.getReasonPhrase(),
-                message,
-                request.getRequestURI());
+                java.time.Instant.now().toString(), // 1. String (Timestamp)
+                status.value(),                     // 2. int (Estado, ej: 404)
+                status.getReasonPhrase(),           // 3. String (Título, ej: "Not Found")
+                message,                            // 4. String (Detalle del error)
+                request != null ? request.getRequestURI() : "" // 5. String (Ruta)
+        );
         return ResponseEntity.status(status).body(body);
     }
 }
