@@ -2,10 +2,12 @@ package com.tartis_recon_ai_parking.infrastructure.spot.adapter.output.persisten
 
 
 import com.tartis_recon_ai_parking.domain.spot.VehicleType;
+
 import com.tartis_recon_ai_parking.domain.spot.SpotStatus;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+
 
 import org.springframework.stereotype.Component;
 
@@ -26,6 +28,7 @@ public class SpotPersistenceAdapter implements SpotPersistence {
     }
 
     @Override
+    @Transactional
     public Spot save(Spot spot) {
         SpotEntity saved = repository.save(mapper.toEntity(spot));
         return mapper.toDomain(saved);
