@@ -35,7 +35,6 @@ public class SpotEntity {
     @Column(name = "version", nullable = false)
     private Long version;
 
-
     protected SpotEntity() {
         // Requerido por JPA/Hibernate.
     }
