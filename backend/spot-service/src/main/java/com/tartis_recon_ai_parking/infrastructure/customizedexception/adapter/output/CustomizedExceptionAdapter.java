@@ -22,6 +22,7 @@ import org.springframework.dao.ConcurrencyFailureException;
 import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.dao.QueryTimeoutException;
 import org.springframework.http.HttpStatus;
@@ -129,6 +130,7 @@ public class CustomizedExceptionAdapter {
     @ExceptionHandler({
             CannotAcquireLockException.class,
             PessimisticLockingFailureException.class,
+            OptimisticLockingFailureException.class,
             ObjectOptimisticLockingFailureException.class,
             ConcurrencyFailureException.class
     })

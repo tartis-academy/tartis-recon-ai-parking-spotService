@@ -2,6 +2,9 @@ package com.tartis_recon_ai_parking.infrastructure.spot.adapter.output.persisten
 
 
 import com.tartis_recon_ai_parking.domain.spot.VehicleType;
+
+import jakarta.transaction.Transactional;
+
 import com.tartis_recon_ai_parking.domain.spot.SpotStatus;
 import java.util.List;
 import java.util.Optional;
@@ -58,6 +61,7 @@ return repository.countByTypeAndStatus(type, status);
     }
 
 @Override
+@Transactional
     public Optional<Spot> findAndOccupyAvailableSpot(VehicleType type) {
         return repository.findFirstAvailable(type)
                 .map(entity -> {
@@ -69,6 +73,7 @@ return repository.countByTypeAndStatus(type, status);
     }
 
     @Override
+    @Transactional
     public boolean existsAvailableByType(VehicleType type) {
         // Consulta sin bloqueo: findFirstAvailable usa SELECT ... FOR UPDATE, prohibido en transaccion readOnly.
         return repository.countByTypeAndStatus(type, SpotStatus.AVAILABLE) > 0;
