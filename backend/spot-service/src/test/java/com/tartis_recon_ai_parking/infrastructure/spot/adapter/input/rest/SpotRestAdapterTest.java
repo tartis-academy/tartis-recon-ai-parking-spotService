@@ -2,7 +2,11 @@ package com.tartis_recon_ai_parking.infrastructure.spot.adapter.input.rest;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
+import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -43,7 +47,9 @@ class SpotRestAdapterTest {
 
     @BeforeEach
     void setUp() {
-        mockMvc = MockMvcBuilders.webAppContextSetup(context).build();
+        mockMvc = MockMvcBuilders.webAppContextSetup(context)
+                .apply(springSecurity())
+                .build();
     }
 
     @MockitoBean
@@ -87,6 +93,7 @@ class SpotRestAdapterTest {
         // QUE DEBERIA HACER:
         // Debe retornar estado 201 CREATED y el JSON de la plaza creada coincidente.
         mockMvc.perform(post("/v1/spots")
+                .with(jwt())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"type\":\"CAR\"}"))
                 .andExpect(status().isCreated())
@@ -112,6 +119,7 @@ class SpotRestAdapterTest {
         // QUE DEBERIA HACER:
         // Debe retornar estado 200 OK y una lista JSON con las plazas.
         mockMvc.perform(get("/v1/spots")
+                .with(jwt())
                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").value(spotId.toString()))
@@ -135,6 +143,7 @@ class SpotRestAdapterTest {
         // QUE DEBERIA HACER:
         // Debe retornar estado 200 OK y los datos de la plaza solicitada.
         mockMvc.perform(get("/v1/spots/{id}", spotId)
+                .with(jwt())
                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(spotId.toString()))
@@ -158,6 +167,7 @@ class SpotRestAdapterTest {
         // QUE DEBERIA HACER:
         // Debe retornar estado 200 OK y la información actualizada.
         mockMvc.perform(put("/v1/spots/{id}", spotId)
+                .with(jwt())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"type\":\"MOTORBIKE\"}"))
                 .andExpect(status().isOk())
@@ -182,6 +192,7 @@ class SpotRestAdapterTest {
         // QUE DEBERIA HACER:
         // Debe retornar estado 200 OK y los datos reflejando el estado OCCUPIED.
         mockMvc.perform(post("/v1/spots/occupy")
+                .with(jwt())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"type\":\"CAR\"}"))
                 .andExpect(status().isOk())
@@ -207,6 +218,7 @@ class SpotRestAdapterTest {
         // QUE DEBERIA HACER:
         // Debe retornar estado 200 OK confirmando que el estado ahora es AVAILABLE.
         mockMvc.perform(post("/v1/spots/{id}/release", spotId)
+                .with(jwt())
                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(spotId.toString()))
@@ -230,11 +242,29 @@ class SpotRestAdapterTest {
         // QUE DEBERIA HACER:
         // Debe retornar estado 200 OK y la plaza con el estado UNAVAILABLE reflejado.
         mockMvc.perform(patch("/v1/spots/{id}/status", spotId)
+                .with(jwt())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"type\":\"CAR\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(spotId.toString()))
                 .andExpect(jsonPath("$.type").value("CAR"))
                 .andExpect(jsonPath("$.status").value("UNAVAILABLE"));
+    }
+
+    // --- SEC-06: verificacion propia del resource server, no de negocio ---
+
+    @Test
+    @DisplayName("Debe rechazar con 401 una peticion sin token")
+    void shouldReturn401WhenNoTokenProvided() throws Exception {
+        // QUE HACE:
+        // - Llama a un endpoint valido sin adjuntar ningun JWT (sin .with(jwt())).
+        // QUE DEBERIA HACER:
+        // El SecurityFilterChain de SEC-06 (replicado de SEC-04) debe cortar la
+        // peticion antes de que llegue al controller: 401 Unauthorized y el caso
+        // de uso no se invoca.
+        mockMvc.perform(get("/v1/spots"))
+                .andExpect(status().isUnauthorized());
+
+        verify(getSpotUseCase, never()).getAll();
     }
 }
