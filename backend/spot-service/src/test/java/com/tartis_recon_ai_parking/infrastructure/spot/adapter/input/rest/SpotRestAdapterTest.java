@@ -2,9 +2,13 @@ package com.tartis_recon_ai_parking.infrastructure.spot.adapter.input.rest;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
+import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 
 import java.util.List;
 import java.util.UUID;
@@ -37,6 +41,14 @@ import com.tartis_recon_ai_parking.domain.spot.exception.SpotCannotBeBlockedExce
 import com.tartis_recon_ai_parking.infrastructure.spot.adapter.input.rest.dto.response.AvailabilityResponse;
 import com.tartis_recon_ai_parking.infrastructure.spot.adapter.input.rest.dto.response.SpotResponse;
 
+// Desde SEC-06, al ser @SpringBootTest (contexto completo, no un slice) SecurityConfig
+// se carga automaticamente: no hace falta @Import como en un @WebMvcTest. Pero como
+// aqui MockMvc se construye a mano (ver setUp()), hay que enganchar el filtro de
+// seguridad explicitamente con .apply(springSecurity()) — si no, el bean existe pero
+// no se aplica a las peticiones simuladas. Con eso activo, toda peticion necesita
+// .with(jwt()) para no cortar con 401 antes de llegar al controller — incluidas las
+// que comprueban 404/405/409/415, porque el filtro de seguridad actua antes que
+// Spring MVC decida esos codigos. El caso sin token se prueba aparte, al final.
 @SpringBootTest
 class SpotRestAdapterTest {
 
@@ -47,7 +59,14 @@ class SpotRestAdapterTest {
 
     @BeforeEach
     void setUp() {
-        mockMvc = MockMvcBuilders.webAppContextSetup(context).build();
+        // .apply(springSecurity()) es imprescindible aqui: al construir MockMvc a mano
+        // (en vez de via @AutoConfigureMockMvc o el auto-setup de @WebMvcTest), el
+        // SecurityFilterChain no se engancha solo aunque el bean exista en el contexto.
+        // Sin esto, .with(jwt()) en los tests de abajo no hace nada y ninguno detecta
+        // que la seguridad este realmente activa.
+        mockMvc = MockMvcBuilders.webAppContextSetup(context)
+                .apply(springSecurity())
+                .build();
     }
 
     @MockitoBean
@@ -91,6 +110,7 @@ class SpotRestAdapterTest {
         // QUE DEBERIA HACER:
         // Debe retornar estado 201 CREATED y el JSON de la plaza creada coincidente.
         mockMvc.perform(post("/v1/spots")
+                .with(jwt())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"type\":\"CAR\"}"))
                 .andExpect(status().isCreated())
@@ -116,6 +136,7 @@ class SpotRestAdapterTest {
         // QUE DEBERIA HACER:
         // Debe retornar estado 200 OK y una lista JSON con las plazas.
         mockMvc.perform(get("/v1/spots")
+                .with(jwt())
                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").value(spotId.toString()))
@@ -139,6 +160,7 @@ class SpotRestAdapterTest {
         // QUE DEBERIA HACER:
         // Debe retornar estado 200 OK y los datos de la plaza solicitada.
         mockMvc.perform(get("/v1/spots/{id}", spotId)
+                .with(jwt())
                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(spotId.toString()))
@@ -162,6 +184,7 @@ class SpotRestAdapterTest {
         // QUE DEBERIA HACER:
         // Debe retornar estado 200 OK y la información actualizada.
         mockMvc.perform(put("/v1/spots/{id}", spotId)
+                .with(jwt())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"type\":\"MOTORBIKE\"}"))
                 .andExpect(status().isOk())
@@ -186,6 +209,7 @@ class SpotRestAdapterTest {
         // QUE DEBERIA HACER:
         // Debe retornar estado 200 OK y los datos reflejando el estado OCCUPIED.
         mockMvc.perform(post("/v1/spots/occupy")
+                .with(jwt())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"vehicleType\":\"CAR\"}"))
                 .andExpect(status().isOk())
@@ -210,6 +234,7 @@ class SpotRestAdapterTest {
         // Debe resolverlo igual que vehicleType: el alias es lo que permite
         // desplegar los dos servicios en cualquier orden.
         mockMvc.perform(post("/v1/spots/occupy")
+                .with(jwt())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"type\":\"CAR\"}"))
                 .andExpect(status().isOk())
@@ -233,6 +258,7 @@ class SpotRestAdapterTest {
         // QUE DEBERIA HACER:
         // Debe retornar estado 200 OK confirmando que el estado ahora es AVAILABLE.
         mockMvc.perform(post("/v1/spots/{id}/release", spotId)
+                .with(jwt())
                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(spotId.toString()))
@@ -256,6 +282,7 @@ class SpotRestAdapterTest {
         // QUE DEBERIA HACER:
         // Debe retornar estado 200 OK y la plaza con el estado UNAVAILABLE reflejado.
         mockMvc.perform(patch("/v1/spots/{id}/status", spotId)
+                .with(jwt())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"status\":\"UNAVAILABLE\"}"))
                 .andExpect(status().isOk())
@@ -278,6 +305,7 @@ class SpotRestAdapterTest {
         // QUE DEBERIA HACER:
         // Debe retornar estado 409 CONFLICT traducido por CustomizedExceptionAdapter.
         mockMvc.perform(patch("/v1/spots/{id}/status", spotId)
+                .with(jwt())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"status\":\"UNAVAILABLE\"}"))
                 .andExpect(status().isConflict());
@@ -298,7 +326,7 @@ class SpotRestAdapterTest {
         // QUE DEBERIA HACER:
         // Debe responder en la ruta del openapi.yml y con el cuerpo AvailabilityResponse,
         // no un booleano suelto.
-        mockMvc.perform(get("/v1/spots/availability").param("type", "CAR"))
+        mockMvc.perform(get("/v1/spots/availability").with(jwt()).param("type", "CAR"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.type").value("CAR"))
                 .andExpect(jsonPath("$.available").value(true))
@@ -309,7 +337,7 @@ class SpotRestAdapterTest {
     @Test
     @DisplayName("GET /v1/spots/availability sin type - debe retornar 400, no 500")
     void checkAvailability_ShouldReturnBadRequest_WhenTypeIsMissing() throws Exception {
-        mockMvc.perform(get("/v1/spots/availability"))
+        mockMvc.perform(get("/v1/spots/availability").with(jwt()))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.status").value(400));
     }
@@ -317,7 +345,7 @@ class SpotRestAdapterTest {
     @Test
     @DisplayName("Ruta inexistente - debe retornar 404, no 500")
     void unknownPath_ShouldReturnNotFound() throws Exception {
-        mockMvc.perform(get("/v1/spotss"))
+        mockMvc.perform(get("/v1/spotss").with(jwt()))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.status").value(404));
     }
@@ -327,7 +355,7 @@ class SpotRestAdapterTest {
     void legacyAvailablePath_ShouldReturnBadRequest() throws Exception {
         // /v1/spots/available encaja con el mapping /{id} e intenta parsear
         // "available" como UUID. Antes salia como 500 por el catch-all.
-        mockMvc.perform(get("/v1/spots/available").param("type", "CAR"))
+        mockMvc.perform(get("/v1/spots/available").with(jwt()).param("type", "CAR"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.status").value(400));
     }
@@ -335,7 +363,7 @@ class SpotRestAdapterTest {
     @Test
     @DisplayName("Metodo no soportado - debe retornar 405, no 500")
     void unsupportedMethod_ShouldReturnMethodNotAllowed() throws Exception {
-        mockMvc.perform(delete("/v1/spots/{id}", UUID.randomUUID()))
+        mockMvc.perform(delete("/v1/spots/{id}", UUID.randomUUID()).with(jwt()))
                 .andExpect(status().isMethodNotAllowed())
                 .andExpect(jsonPath("$.status").value(405));
     }
@@ -344,9 +372,27 @@ class SpotRestAdapterTest {
     @DisplayName("Content-Type no soportado - debe retornar 415, no 500")
     void unsupportedMediaType_ShouldReturnUnsupportedMediaType() throws Exception {
         mockMvc.perform(post("/v1/spots")
+                .with(jwt())
                 .contentType(MediaType.TEXT_PLAIN)
                 .content("type=CAR"))
                 .andExpect(status().isUnsupportedMediaType())
                 .andExpect(jsonPath("$.status").value(415));
+    }
+
+    // --- SEC-06: verificacion propia del resource server, no de negocio ---
+
+    @Test
+    @DisplayName("Debe rechazar con 401 una peticion sin token")
+    void shouldReturn401WhenNoTokenProvided() throws Exception {
+        // QUE HACE:
+        // - Llama a un endpoint valido sin adjuntar ningun JWT (sin .with(jwt())).
+        // QUE DEBERIA HACER:
+        // El SecurityFilterChain de SEC-06 (replicado de SEC-04) debe cortar la
+        // peticion antes de que llegue al controller: 401 Unauthorized y el caso
+        // de uso no se invoca.
+        mockMvc.perform(get("/v1/spots"))
+                .andExpect(status().isUnauthorized());
+
+        verify(getSpotUseCase, never()).getAll();
     }
 }
