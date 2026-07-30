@@ -73,4 +73,37 @@ public class ReleaseSpotUseCaseTest {
         // Debe lanzar SpotNotFoundException y no se invoca el metodo save().
         assertThrows(SpotNotFoundException.class, () -> releaseSpotUseCase.execute(spotId));
     }
+
+    @Test
+    @DisplayName("Idempotencia: Debería lanzar SpotEventOutdatedException si el evento ocurrió antes del último cambio de estado")
+    void execute_ShouldThrowSpotEventOutdatedException_WhenEventIsOlderThanLastStatusChange() {
+        UUID spotId = UUID.randomUUID();
+        java.time.Instant now = java.time.Instant.now();
+        java.time.Instant olderEventTime = now.minusSeconds(60);
+        
+        // Plaza cuyo último cambio de estado fue "now"
+        Spot spot = Spot.reconstruct(spotId, VehicleType.CAR, SpotStatus.OCCUPIED, now);
+        when(spotPersistence.findById(spotId)).thenReturn(Optional.of(spot));
+
+        // Debe lanzar SpotEventOutdatedException porque el evento ocurrió hace 60 segundos (antes de now)
+        assertThrows(com.tartis_recon_ai_parking.domain.spot.exception.SpotEventOutdatedException.class, 
+                () -> releaseSpotUseCase.execute(spotId, olderEventTime));
+    }
+
+    @Test
+    @DisplayName("Idempotencia: Debería liberar la plaza si el evento es posterior al último cambio de estado")
+    void execute_ShouldReleaseSpot_WhenEventIsNewerThanLastStatusChange() {
+        UUID spotId = UUID.randomUUID();
+        java.time.Instant pastTime = java.time.Instant.now().minusSeconds(120);
+        java.time.Instant newerEventTime = pastTime.plusSeconds(60);
+
+        Spot spot = Spot.reconstruct(spotId, VehicleType.CAR, SpotStatus.OCCUPIED, pastTime);
+        when(spotPersistence.findById(spotId)).thenReturn(Optional.of(spot));
+        when(spotPersistence.save(any(Spot.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        SpotDTO result = releaseSpotUseCase.execute(spotId, newerEventTime);
+
+        assertNotNull(result);
+        assertEquals(SpotStatus.AVAILABLE, result.getStatus());
+    }
 }
