@@ -27,8 +27,7 @@ public class SpotPersistenceAdapter implements SpotPersistence {
         this.mapper = mapper;
     }
 
-      @Override
-      @Transactional
+    @Override
     public Spot save(Spot spot) {
         SpotEntity saved = repository.save(mapper.toEntity(spot));
         return mapper.toDomain(saved);
@@ -60,7 +59,12 @@ return repository.countByTypeAndStatus(type, status);
         return repository.countByType(type);
     }
 
-@Override
+    // La frontera transaccional vive en OccupySpotUseCase.execute(), no aqui:
+    // es esa transaccion la que mantiene GESTIONADA la entidad que devuelve
+    // findFirstAvailable, de modo que el dirty checking emita el UPDATE al
+    // hacer commit y el PESSIMISTIC_WRITE cubra toda la seccion critica.
+    // UseCaseTransactionBoundaryTest lo verifica por ambos lados.
+    @Override
     public Optional<Spot> findAndOccupyAvailableSpot(VehicleType type) {
         return repository.findFirstAvailable(type)
                 .map(entity -> {
