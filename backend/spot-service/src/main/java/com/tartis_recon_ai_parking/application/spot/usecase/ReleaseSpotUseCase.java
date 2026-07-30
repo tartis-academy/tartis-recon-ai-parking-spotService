@@ -27,6 +27,14 @@ public class ReleaseSpotUseCase {
         Spot spot = spotPersistence.findById(id)
                 .orElseThrow(() -> new SpotNotFoundException("No existe una plaza con id " + id));
 
+        /**
+         * Guard de idempotencia por timestamp:
+         * Compara la fecha de ocurrencia del evento externo con la fecha del último cambio registrado en la plaza.
+         * 
+         * NOTA DE ARQUITECTURA: Esta guardia asume que los relojes de los microservicios emisores (stay-service)
+         * y receptores (spot-service) se encuentran sincronizados vía NTP. Si existiera descalibración horaria (clock skew),
+         * eventos válidos con timestamps desfasados podrían ser descartados.
+         */
         if (eventOccurredAt != null && spot.getLastStatusChangeAt() != null 
                 && eventOccurredAt.isBefore(spot.getLastStatusChangeAt())) {
             throw new SpotEventOutdatedException(
