@@ -50,7 +50,9 @@ class RabbitMQConfigTest {
     }
 
     @Test
-    void debeRegistrarJsonMessageConverter() {
+    void debeRegistrarJsonMessageConverterYMessageRecoverer() {
         assertNotNull(config.jsonMessageConverter());
+        org.springframework.amqp.rabbit.core.RabbitTemplate mockTemplate = org.mockito.Mockito.mock(org.springframework.amqp.rabbit.core.RabbitTemplate.class);
+        assertNotNull(config.messageRecoverer(mockTemplate));
     }
 }

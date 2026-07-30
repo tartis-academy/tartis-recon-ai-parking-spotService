@@ -47,8 +47,8 @@ public class SpotEventListenerAdapter {
         } catch (Exception e) {
             log.error("Error procesando StayClosedEvent: {}", e.getMessage(), e);
             // Relanzar la excepción para notificar a Spring AMQP.
-            // NOTA: Dado que default-requeue-rejected=false y no hay DLQ configurada en la Queue,
-            // RabbitMQ descartará el mensaje rechazado sin reenviarlo a la cola.
+            // NOTA: Con default-requeue-rejected=false y la DLQ configurada en la Queue (x-dead-letter-exchange),
+            // RabbitMQ o RepublishMessageRecoverer enrutará el mensaje rechazado a la DLQ (spot-service-stay-closed-dlq) tras agotar los 6 reintentos.
             throw e;
         }
     }
