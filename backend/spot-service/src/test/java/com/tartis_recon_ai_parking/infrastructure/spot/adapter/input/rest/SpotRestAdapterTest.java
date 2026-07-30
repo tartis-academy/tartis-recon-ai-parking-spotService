@@ -222,6 +222,7 @@ class SpotRestAdapterTest {
         // Debe resolverlo igual que vehicleType: el alias es lo que permite
         // desplegar los dos servicios en cualquier orden.
         mockMvc.perform(post("/v1/spots/occupy")
+                .with(jwt())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"type\":\"CAR\"}"))
                 .andExpect(status().isOk())
@@ -309,6 +310,7 @@ class SpotRestAdapterTest {
         // QUE DEBERIA HACER:
         // Debe retornar estado 409 CONFLICT traducido por CustomizedExceptionAdapter.
         mockMvc.perform(patch("/v1/spots/{id}/status", spotId)
+                .with(jwt())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"status\":\"UNAVAILABLE\"}"))
                 .andExpect(status().isConflict());
@@ -329,7 +331,7 @@ class SpotRestAdapterTest {
         // QUE DEBERIA HACER:
         // Debe responder en la ruta del openapi.yml y con el cuerpo AvailabilityResponse,
         // no un booleano suelto.
-        mockMvc.perform(get("/v1/spots/availability").param("type", "CAR"))
+        mockMvc.perform(get("/v1/spots/availability").with(jwt()).param("type", "CAR"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.type").value("CAR"))
                 .andExpect(jsonPath("$.available").value(true))
@@ -340,7 +342,7 @@ class SpotRestAdapterTest {
     @Test
     @DisplayName("GET /v1/spots/availability sin type - debe retornar 400, no 500")
     void checkAvailability_ShouldReturnBadRequest_WhenTypeIsMissing() throws Exception {
-        mockMvc.perform(get("/v1/spots/availability"))
+        mockMvc.perform(get("/v1/spots/availability").with(jwt()))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.status").value(400));
     }
@@ -348,7 +350,7 @@ class SpotRestAdapterTest {
     @Test
     @DisplayName("Ruta inexistente - debe retornar 404, no 500")
     void unknownPath_ShouldReturnNotFound() throws Exception {
-        mockMvc.perform(get("/v1/spotss"))
+        mockMvc.perform(get("/v1/spotss").with(jwt()))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.status").value(404));
     }
@@ -358,7 +360,7 @@ class SpotRestAdapterTest {
     void legacyAvailablePath_ShouldReturnBadRequest() throws Exception {
         // /v1/spots/available encaja con el mapping /{id} e intenta parsear
         // "available" como UUID. Antes salia como 500 por el catch-all.
-        mockMvc.perform(get("/v1/spots/available").param("type", "CAR"))
+        mockMvc.perform(get("/v1/spots/available").with(jwt()).param("type", "CAR"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.status").value(400));
     }
@@ -366,7 +368,7 @@ class SpotRestAdapterTest {
     @Test
     @DisplayName("Metodo no soportado - debe retornar 405, no 500")
     void unsupportedMethod_ShouldReturnMethodNotAllowed() throws Exception {
-        mockMvc.perform(delete("/v1/spots/{id}", UUID.randomUUID()))
+        mockMvc.perform(delete("/v1/spots/{id}", UUID.randomUUID()).with(jwt()))
                 .andExpect(status().isMethodNotAllowed())
                 .andExpect(jsonPath("$.status").value(405));
     }
@@ -375,6 +377,7 @@ class SpotRestAdapterTest {
     @DisplayName("Content-Type no soportado - debe retornar 415, no 500")
     void unsupportedMediaType_ShouldReturnUnsupportedMediaType() throws Exception {
         mockMvc.perform(post("/v1/spots")
+                .with(jwt())
                 .contentType(MediaType.TEXT_PLAIN)
                 .content("type=CAR"))
                 .andExpect(status().isUnsupportedMediaType())
@@ -397,6 +400,7 @@ class SpotRestAdapterTest {
         // que Spring resuelva esta excepcion a handleDatabaseUnavailable y no al
         // catch-all de Exception.
         mockMvc.perform(post("/v1/spots/occupy")
+                .with(jwt())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"vehicleType\":\"CAR\"}"))
                 .andExpect(status().isServiceUnavailable())
