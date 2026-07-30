@@ -114,4 +114,24 @@ class SpotEventListenerAdapterTest {
         assertThrows(RuntimeException.class, () -> adapter.handleStayClosedEvent(event));
         verify(releaseSpotUseCase, times(1)).execute(eq(spotId), any(Instant.class));
     }
+
+    @Test
+    void handleStayClosedEvent_Idempotency_IgnoresSpotEventOutdatedException() {
+        // Arrange
+        StayClosedEventData data = new StayClosedEventData(spotId);
+        StayClosedEvent event = new StayClosedEvent(
+                UUID.randomUUID(), "StayClosedEvent", "v1", Instant.now(), data
+        );
+
+        // Simula que el evento es antiguo y lanza la excepción SpotEventOutdatedException
+        doThrow(new com.tartis_recon_ai_parking.domain.spot.exception.SpotEventOutdatedException("El evento es antiguo"))
+                .when(releaseSpotUseCase).execute(eq(spotId), any(Instant.class));
+
+        // Act
+        // No debe lanzar excepción hacia arriba (se captura para idempotencia avanzada)
+        adapter.handleStayClosedEvent(event);
+
+        // Assert
+        verify(releaseSpotUseCase, times(1)).execute(eq(spotId), any(Instant.class));
+    }
 }
