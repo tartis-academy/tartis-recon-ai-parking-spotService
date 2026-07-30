@@ -60,6 +60,22 @@ class KeycloakRoleConverterTest {
     }
 
     @Test
+    @DisplayName("Debe devolver una coleccion vacia si realm_access no es un Map (ej. llega como String suelto), sin lanzar ClassCastException")
+    void shouldReturnEmptyWhenRealmAccessClaimIsNotAMap() {
+        Jwt jwt = Jwt.withTokenValue("token")
+                .header("alg", "RS256")
+                .issuedAt(Instant.now())
+                .expiresAt(Instant.now().plusSeconds(60))
+                .claim("sub", "test-user")
+                .claim("realm_access", "not-a-map")
+                .build();
+
+        Collection<GrantedAuthority> authorities = converter.convert(jwt);
+
+        assertThat(authorities).isEmpty();
+    }
+
+    @Test
     @DisplayName("Debe ignorar elementos nulos, en blanco o de tipo distinto a String dentro de la lista de roles")
     void shouldFilterOutInvalidRoleEntries() {
         List<Object> rolesWithNoise = Arrays.asList("ADMIN", null, "", "   ", 42, "OPERARIO");

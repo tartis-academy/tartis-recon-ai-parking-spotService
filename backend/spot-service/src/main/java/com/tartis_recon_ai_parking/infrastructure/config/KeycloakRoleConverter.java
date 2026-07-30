@@ -28,11 +28,16 @@ public class KeycloakRoleConverter implements Converter<Jwt, Collection<GrantedA
 
     @Override
     public Collection<GrantedAuthority> convert(Jwt jwt) {
-        Map<String, Object> realmAccess = jwt.getClaimAsMap(REALM_ACCESS_CLAIM);
-        if (realmAccess == null || !(realmAccess.get(ROLES_CLAIM) instanceof Collection<?> roles)) {
-            // Cubre tanto la ausencia del claim como un formato inesperado (ej. si
-            // "roles" no fuera una lista) sin lanzar ClassCastException: preferimos
-            // autenticar sin permisos a romper el filtro de seguridad en produccion.
+        // No se usa jwt.getClaimAsMap(): internamente hace un cast sin comprobar
+        // a Map<String,Object>, y si "realm_access" viniera con un tipo distinto
+        // (ej. un String suelto) lanzaria ClassCastException en vez de devolver
+        // sin permisos. Se lee el claim en bruto y se comprueba el tipo a mano.
+        Object realmAccessClaim = jwt.getClaim(REALM_ACCESS_CLAIM);
+        if (!(realmAccessClaim instanceof Map<?, ?> realmAccess)
+                || !(realmAccess.get(ROLES_CLAIM) instanceof Collection<?> roles)) {
+            // Cubre la ausencia del claim, que no sea un Map, o que "roles" no sea
+            // una lista, sin lanzar ClassCastException: preferimos autenticar sin
+            // permisos a romper el filtro de seguridad en produccion.
             return List.of();
         }
 
