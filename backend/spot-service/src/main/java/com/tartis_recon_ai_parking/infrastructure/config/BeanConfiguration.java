@@ -4,6 +4,7 @@ import com.tartis_recon_ai_parking.application.spot.port.output.SpotPersistence;
 import com.tartis_recon_ai_parking.application.spot.usecase.AvailableSpotUseCase;
 import com.tartis_recon_ai_parking.application.spot.usecase.CreateSpotUseCase;
 import com.tartis_recon_ai_parking.application.spot.usecase.GetSpotUseCase;
+import com.tartis_recon_ai_parking.application.spot.usecase.UpdateSpotStatusUseCase;
 import com.tartis_recon_ai_parking.application.spot.usecase.UpdateSpotUseCase;
 import com.tartis_recon_ai_parking.application.spot.usecase.OccupySpotUseCase;
 import com.tartis_recon_ai_parking.application.spot.usecase.ReleaseSpotUseCase;
@@ -26,6 +27,11 @@ public class BeanConfiguration {
     @Bean
     public UpdateSpotUseCase updateSpotUseCase(SpotPersistence spotPersistence) {
         return new UpdateSpotUseCase(spotPersistence);
+    }
+
+    @Bean
+    public UpdateSpotStatusUseCase updateSpotStatusUseCase(SpotPersistence spotPersistence) {
+        return new UpdateSpotStatusUseCase(spotPersistence);
     }
 
     @Bean
