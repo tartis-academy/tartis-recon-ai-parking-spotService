@@ -17,6 +17,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.transaction.CannotCreateTransactionException;
 import org.springframework.web.context.WebApplicationContext;
 import org.junit.jupiter.api.BeforeEach;
 
@@ -348,5 +349,28 @@ class SpotRestAdapterTest {
                 .content("type=CAR"))
                 .andExpect(status().isUnsupportedMediaType())
                 .andExpect(jsonPath("$.status").value(415));
+    }
+
+    @Test
+    @DisplayName("BD inaccesible - debe retornar 503, no 500")
+    void databaseDown_ShouldReturnServiceUnavailable() throws Exception {
+        // QUE HACE:
+        // - Simula Postgres caido. Los casos de uso son @Transactional, asi que
+        //   Spring falla al ABRIR la transaccion y lanza
+        //   CannotCreateTransactionException, que no es una DataAccessException.
+        when(occupySpotUseCase.execute(VehicleType.CAR))
+                .thenThrow(new CannotCreateTransactionException("Could not open JPA EntityManager"));
+
+        // QUE DEBERIA HACER:
+        // Debe salir como 503 con el mensaje sanitizado. Se ejerce via MockMvc a
+        // proposito: lo que hay que comprobar no es el cuerpo del handler, sino
+        // que Spring resuelva esta excepcion a handleDatabaseUnavailable y no al
+        // catch-all de Exception.
+        mockMvc.perform(post("/v1/spots/occupy")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"vehicleType\":\"CAR\"}"))
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.status").value(503))
+                .andExpect(jsonPath("$.message").value("El servicio de datos no está disponible temporalmente."));
     }
 }
