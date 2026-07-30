@@ -27,10 +27,15 @@ public class SpotPersistenceAdapter implements SpotPersistence {
         this.mapper = mapper;
     }
 
-      @Override
+    @Override
     public Spot save(Spot spot) {
-        SpotEntity saved = repository.save(mapper.toEntity(spot));
-        return mapper.toDomain(saved);
+        return repository.findById(spot.getId())
+                .map(managed -> {
+                    managed.setType(spot.getType());
+                    managed.setStatus(spot.getStatus());
+                    return mapper.toDomain(managed);
+                })
+                .orElseGet(() -> mapper.toDomain(repository.save(mapper.toEntity(spot))));
     }
 
     @Override

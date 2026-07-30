@@ -35,10 +35,10 @@ class SpotPersistenceAdapterTest {
     private SpotPersistenceAdapter spotPersistenceAdapter;
 
     @Test
-    @DisplayName("Debe guardar una plaza mapeandola a entidad y retornandola convertida a dominio de nuevo")
-    void shouldSaveSpotSuccessfully() {
+    @DisplayName("Plaza nueva: debe mapearla a entidad, persistirla y retornarla convertida a dominio de nuevo")
+    void shouldSaveNewSpotSuccessfully() {
         // QUE HACE:
-        // - Instancia una plaza (Spot) de dominio.
+        // - Instancia una plaza (Spot) de dominio que NO existe todavia en BD.
         // - Simula una entidad de persistencia y la plaza de retorno mapeada.
         // - Configura los mocks del mapper y del repositorio.
         // - Ejecuta el metodo save del adaptador.
@@ -50,6 +50,7 @@ class SpotPersistenceAdapterTest {
         entity.setType(VehicleType.CAR);
         entity.setStatus(SpotStatus.AVAILABLE);
 
+        when(spotRepository.findById(id)).thenReturn(Optional.empty());
         when(spotPersistenceMapper.toEntity(spot)).thenReturn(entity);
         when(spotRepository.save(entity)).thenReturn(entity);
         when(spotPersistenceMapper.toDomain(entity)).thenReturn(spot);
@@ -64,6 +65,37 @@ class SpotPersistenceAdapterTest {
         verify(spotPersistenceMapper, times(1)).toEntity(spot);
         verify(spotRepository, times(1)).save(entity);
         verify(spotPersistenceMapper, times(1)).toDomain(entity);
+    }
+
+    @Test
+    @DisplayName("Plaza existente: debe mutar la entidad gestionada y NO llamar a save() con una copia remapeada")
+    void shouldUpdateManagedEntity_WhenSpotAlreadyExists() {
+        // QUE HACE:
+        // - Simula una plaza que ya esta en BD y llega modificada desde el dominio.
+        // Es el caso de release, update y updateStatus: todos hacen findById antes
+        // de guardar, asi que la entidad ya esta GESTIONADA en el contexto.
+        UUID id = UUID.randomUUID();
+        Spot liberada = Spot.reconstruct(id, VehicleType.CAR, SpotStatus.AVAILABLE);
+
+        SpotEntity gestionada = new SpotEntity();
+        gestionada.setId(id);
+        gestionada.setType(VehicleType.CAR);
+        gestionada.setStatus(SpotStatus.OCCUPIED);
+
+        when(spotRepository.findById(id)).thenReturn(Optional.of(gestionada));
+        when(spotPersistenceMapper.toDomain(gestionada)).thenReturn(liberada);
+
+        Spot result = spotPersistenceAdapter.save(liberada);
+
+        // QUE DEBERIA HACER:
+        // Debe aplicar el cambio sobre la instancia gestionada y dejar que el dirty
+        // checking emita el UPDATE al commit. NO debe pasar por toEntity()/save():
+        // esa copia lleva version=null, isNew() la daria por nueva y el persist()
+        // resultante revienta con NonUniqueObjectException.
+        assertThat(gestionada.getStatus()).isEqualTo(SpotStatus.AVAILABLE);
+        assertThat(result).isEqualTo(liberada);
+        verify(spotRepository, never()).save(any(SpotEntity.class));
+        verify(spotPersistenceMapper, never()).toEntity(any(Spot.class));
     }
 
     @Test
