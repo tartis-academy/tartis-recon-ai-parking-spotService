@@ -63,8 +63,29 @@ return repository.countByTypeAndStatus(type, status);
                 .map(entity -> {
                     Spot spot = mapper.toDomain(entity);
                     spot.occupy();
-                    SpotEntity updated = repository.save(mapper.toEntity(spot));
-                    return mapper.toDomain(updated);
+
+                    // Se aplica el cambio sobre la entidad GESTIONADA (la misma
+                    // que findFirstAvailable dejo bloqueada con
+                    // PESSIMISTIC_WRITE), no sobre una copia.
+                    //
+                    // Antes esto era repository.save(mapper.toEntity(spot)), y
+                    // fallaba: el dominio Spot no lleva version, asi que
+                    // toEntity() devuelve una instancia NUEVA con el mismo id y
+                    // version=null. Spring Data mira la version en
+                    // JpaMetamodelEntityInformation.isNew(), la ve nula, la trata
+                    // como entidad nueva y hace persist() en vez de merge. Como
+                    // ya hay una instancia gestionada con ese id, revienta con
+                    //   NonUniqueObjectException: A different object with the
+                    //   same identifier value was already associated with this
+                    //   persistence context
+                    // que el handler traduce a un 409 "Violacion de integridad de
+                    // datos", y en el check-in se leia como "no hay plazas".
+                    //
+                    // Mutando la gestionada, el dirty checking emite el UPDATE al
+                    // hacer commit, la version sube sola y el bloqueo pesimista
+                    // sigue cubriendo la seccion critica.
+                    entity.setStatus(spot.getStatus());
+                    return mapper.toDomain(entity);
                 });
     }
 
