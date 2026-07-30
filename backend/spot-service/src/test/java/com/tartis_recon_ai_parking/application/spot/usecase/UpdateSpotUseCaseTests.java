@@ -10,6 +10,7 @@ import com.tartis_recon_ai_parking.domain.spot.Spot;
 import com.tartis_recon_ai_parking.domain.spot.SpotStatus;
 import com.tartis_recon_ai_parking.domain.spot.VehicleType;
 import com.tartis_recon_ai_parking.domain.spot.exception.SpotNotFoundException;
+import com.tartis_recon_ai_parking.domain.spot.exception.SpotTypeChangeNotAllowedException;
 import com.tartis_recon_ai_parking.domain.spot.exception.SpotValidationException;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -45,12 +46,12 @@ public class UpdateSpotUseCaseTests {
     @Test
     void execute_conPlazaExistente_deberiaActualizarTipoManteniendoIdYStatus() {
         // QUE HACE:
-        // - Crea una plaza existente.
+        // - Crea una plaza existente DISPONIBLE.
         // - Prepara un DTO con el nuevo tipo.
         // - Configura el mock para retornar la plaza y guardar los cambios.
         // - Ejecuta el método execute.
         UUID id = UUID.randomUUID();
-        Spot existing = Spot.reconstruct(id, VehicleType.CAR, SpotStatus.OCCUPIED);
+        Spot existing = Spot.reconstruct(id, VehicleType.MOTORBIKE, SpotStatus.AVAILABLE);
         SpotCreateDTO updateDTO = new SpotCreateDTO(VehicleType.CAR);
 
         when(spotPersistence.findById(id)).thenReturn(Optional.of(existing));
@@ -62,7 +63,42 @@ public class UpdateSpotUseCaseTests {
         // Debe retornar un DTO con el ID original, el estado que ya tenía, y el nuevo tipo de vehículo.
         assertEquals(id, result.getId());
         assertEquals(VehicleType.CAR, result.getType());
-        assertEquals(SpotStatus.OCCUPIED, result.getStatus());
+        assertEquals(SpotStatus.AVAILABLE, result.getStatus());
+    }
+
+    @Test
+    void execute_conPlazaOcupada_deberiaRechazarElCambioDeTipo() {
+        // QUE HACE:
+        // Intenta cambiar el tipo de una plaza con una estancia en curso.
+        UUID id = UUID.randomUUID();
+        Spot occupied = Spot.reconstruct(id, VehicleType.CAR, SpotStatus.OCCUPIED);
+        SpotCreateDTO updateDTO = new SpotCreateDTO(VehicleType.MOTORBIKE);
+
+        when(spotPersistence.findById(id)).thenReturn(Optional.of(occupied));
+
+        // QUE DEBERIA HACER:
+        // IN-05/IN-18: rechazar con SpotTypeChangeNotAllowedException y no persistir nada.
+        assertThrows(SpotTypeChangeNotAllowedException.class, () -> useCase.execute(id, updateDTO));
+        verify(spotPersistence, never()).save(any(Spot.class));
+    }
+
+    @Test
+    void execute_conPlazaEnMantenimiento_deberiaPermitirElCambioDeTipo() {
+        // QUE HACE:
+        // Cambia el tipo de una plaza UNAVAILABLE, que esta vacia y no tiene estancia asociada.
+        UUID id = UUID.randomUUID();
+        Spot blocked = Spot.reconstruct(id, VehicleType.CAR, SpotStatus.UNAVAILABLE);
+        SpotCreateDTO updateDTO = new SpotCreateDTO(VehicleType.CAR_PMR);
+
+        when(spotPersistence.findById(id)).thenReturn(Optional.of(blocked));
+        when(spotPersistence.save(any(Spot.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        SpotDTO result = useCase.execute(id, updateDTO);
+
+        // QUE DEBERIA HACER:
+        // Debe aplicar el nuevo tipo y dejar el estado de mantenimiento intacto.
+        assertEquals(VehicleType.CAR_PMR, result.getType());
+        assertEquals(SpotStatus.UNAVAILABLE, result.getStatus());
     }
 
     @Test

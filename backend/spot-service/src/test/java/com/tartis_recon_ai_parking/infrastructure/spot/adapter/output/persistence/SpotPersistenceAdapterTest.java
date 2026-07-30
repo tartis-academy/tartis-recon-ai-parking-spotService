@@ -190,6 +190,55 @@ class SpotPersistenceAdapterTest {
         assertThat(count).isEqualTo(5L);
         verify(spotRepository, times(1)).countByTypeAndStatus(VehicleType.CAR, SpotStatus.AVAILABLE);
     }
+
+    @Test
+    @DisplayName("Debe retornar el total de plazas de un tipo sea cual sea su estado")
+    void shouldCountByTypeSuccessfully() {
+        // QUE HACE:
+        // - Configura el repositorio para retornar el total del tipo.
+        // - Ejecuta countByType.
+        when(spotRepository.countByType(VehicleType.CAR)).thenReturn(20L);
+
+        long count = spotPersistenceAdapter.countByType(VehicleType.CAR);
+
+        // QUE DEBERIA HACER:
+        // Debe delegar en el repositorio y devolver el mismo total.
+        assertThat(count).isEqualTo(20L);
+        verify(spotRepository, times(1)).countByType(VehicleType.CAR);
+    }
+    @Test
+    @DisplayName("Debe comprobar la disponibilidad por tipo con un conteo, sin usar la consulta con bloqueo")
+    void shouldCheckAvailabilityByTypeWithoutLocking() {
+        // QUE HACE:
+        // - Configura el repositorio para devolver un conteo mayor que cero de plazas AVAILABLE.
+        // - Ejecuta existsAvailableByType.
+        when(spotRepository.countByTypeAndStatus(VehicleType.CAR, SpotStatus.AVAILABLE)).thenReturn(3L);
+
+        boolean result = spotPersistenceAdapter.existsAvailableByType(VehicleType.CAR);
+
+        // QUE DEBERIA HACER:
+        // Debe retornar true usando el conteo y nunca invocar findFirstAvailable (SELECT ... FOR UPDATE).
+        assertThat(result).isTrue();
+        verify(spotRepository, times(1)).countByTypeAndStatus(VehicleType.CAR, SpotStatus.AVAILABLE);
+        verify(spotRepository, never()).findFirstAvailable(any());
+    }
+
+    @Test
+    @DisplayName("Debe retornar false si no hay ninguna plaza disponible del tipo solicitado")
+    void shouldReturnFalseWhenNoAvailableSpotOfType() {
+        // QUE HACE:
+        // - Configura el repositorio para devolver un conteo de cero plazas AVAILABLE.
+        // - Ejecuta existsAvailableByType.
+        when(spotRepository.countByTypeAndStatus(VehicleType.MOTORBIKE, SpotStatus.AVAILABLE)).thenReturn(0L);
+
+        boolean result = spotPersistenceAdapter.existsAvailableByType(VehicleType.MOTORBIKE);
+
+        // QUE DEBERIA HACER:
+        // Debe retornar false.
+        assertThat(result).isFalse();
+        verify(spotRepository, times(1)).countByTypeAndStatus(VehicleType.MOTORBIKE, SpotStatus.AVAILABLE);
+    }
+
     @Test
     @DisplayName("Debe encontrar una plaza disponible, ocuparla y guardarla exitosamente")
     void shouldFindAndOccupyAvailableSpotSuccessfully() {
@@ -200,34 +249,39 @@ class SpotPersistenceAdapterTest {
         // - Configura el repositorio para guardar la entidad ocupada.
         // - Ejecuta el metodo findAndOccupyAvailableSpot.
         UUID id = UUID.randomUUID();
-        SpotEntity availableEntity = new SpotEntity();
-        availableEntity.setId(id);
-        availableEntity.setType(VehicleType.CAR);
-        availableEntity.setStatus(SpotStatus.AVAILABLE);
 
-        Spot availableSpot = Spot.reconstruct(id, VehicleType.CAR, SpotStatus.AVAILABLE);
-        SpotEntity occupiedEntity = new SpotEntity();
-        occupiedEntity.setId(id);
-        occupiedEntity.setType(VehicleType.CAR);
-        occupiedEntity.setStatus(SpotStatus.OCCUPIED);
-        
-        Spot occupiedSpot = Spot.reconstruct(id, VehicleType.CAR, SpotStatus.OCCUPIED);
+        // La entidad que devuelve findFirstAvailable es la GESTIONADA por el
+        // contexto de persistencia (y la que queda bloqueada con
+        // PESSIMISTIC_WRITE). Es sobre esta sobre la que hay que aplicar el
+        // cambio.
+        SpotEntity managedEntity = new SpotEntity();
+        managedEntity.setId(id);
+        managedEntity.setType(VehicleType.CAR);
+        managedEntity.setStatus(SpotStatus.AVAILABLE);
+        managedEntity.setVersion(0L);
 
-        when(spotRepository.findFirstAvailable(VehicleType.CAR)).thenReturn(Optional.of(availableEntity));
-        when(spotPersistenceMapper.toDomain(availableEntity)).thenReturn(availableSpot);
-        when(spotPersistenceMapper.toEntity(any(Spot.class))).thenReturn(occupiedEntity);
-        when(spotRepository.save(occupiedEntity)).thenReturn(occupiedEntity);
-        when(spotPersistenceMapper.toDomain(occupiedEntity)).thenReturn(occupiedSpot);
+        Spot spot = Spot.reconstruct(id, VehicleType.CAR, SpotStatus.AVAILABLE);
+
+        when(spotRepository.findFirstAvailable(VehicleType.CAR)).thenReturn(Optional.of(managedEntity));
+        when(spotPersistenceMapper.toDomain(managedEntity)).thenReturn(spot);
 
         Optional<Spot> result = spotPersistenceAdapter.findAndOccupyAvailableSpot(VehicleType.CAR);
 
         // QUE DEBERIA HACER:
-        // Debe retornar un Optional con la plaza modificada a estado OCCUPIED.
-        // Debe asegurar que se llamo al metodo de busqueda y guardado.
+        // Ocupar la plaza mutando la entidad gestionada, y dejar que el dirty
+        // checking emita el UPDATE al hacer commit.
         assertThat(result).isPresent();
         assertThat(result.get().getStatus()).isEqualTo(SpotStatus.OCCUPIED);
+        assertThat(managedEntity.getStatus()).isEqualTo(SpotStatus.OCCUPIED);
         verify(spotRepository).findFirstAvailable(VehicleType.CAR);
-        verify(spotRepository).save(occupiedEntity);
+
+        // NO debe llamar a save() con una entidad remapeada. El dominio Spot no
+        // lleva version, asi que mapper.toEntity() devolveria una instancia
+        // nueva con el mismo id y version=null; Spring Data la trataria como
+        // nueva (isNew() mira la version) y haria persist(), que revienta con
+        // NonUniqueObjectException al haber ya una gestionada con ese id.
+        verify(spotRepository, never()).save(any(SpotEntity.class));
+        verify(spotPersistenceMapper, never()).toEntity(any(Spot.class));
     }
 
     @Test

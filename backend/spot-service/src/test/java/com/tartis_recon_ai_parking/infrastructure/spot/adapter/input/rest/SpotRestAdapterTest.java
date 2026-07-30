@@ -20,6 +20,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 import org.junit.jupiter.api.BeforeEach;
 
+import com.tartis_recon_ai_parking.application.spot.dto.SpotAvailabilityDTO;
 import com.tartis_recon_ai_parking.application.spot.dto.SpotCreateDTO;
 import com.tartis_recon_ai_parking.application.spot.dto.SpotDTO;
 import com.tartis_recon_ai_parking.application.spot.usecase.AvailableSpotUseCase;
@@ -27,10 +28,13 @@ import com.tartis_recon_ai_parking.application.spot.usecase.CreateSpotUseCase;
 import com.tartis_recon_ai_parking.application.spot.usecase.GetSpotUseCase;
 import com.tartis_recon_ai_parking.application.spot.usecase.OccupySpotUseCase;
 import com.tartis_recon_ai_parking.application.spot.usecase.ReleaseSpotUseCase;
+import com.tartis_recon_ai_parking.application.spot.usecase.UpdateSpotStatusUseCase;
 import com.tartis_recon_ai_parking.application.spot.usecase.UpdateSpotUseCase;
 import com.tartis_recon_ai_parking.domain.spot.Spot;
 import com.tartis_recon_ai_parking.domain.spot.SpotStatus;
 import com.tartis_recon_ai_parking.domain.spot.VehicleType;
+import com.tartis_recon_ai_parking.domain.spot.exception.SpotCannotBeBlockedException;
+import com.tartis_recon_ai_parking.infrastructure.spot.adapter.input.rest.dto.response.AvailabilityResponse;
 import com.tartis_recon_ai_parking.infrastructure.spot.adapter.input.rest.dto.response.SpotResponse;
 
 @SpringBootTest
@@ -56,7 +60,7 @@ class SpotRestAdapterTest {
     private UpdateSpotUseCase updateSpotUseCase;
 
     @MockitoBean
-    private UpdateSpotUseCase updateSpotStatusUseCase;
+    private UpdateSpotStatusUseCase updateSpotStatusUseCase;
 
     @MockitoBean
     private OccupySpotUseCase occupySpotUseCase;
@@ -183,11 +187,33 @@ class SpotRestAdapterTest {
         // Debe retornar estado 200 OK y los datos reflejando el estado OCCUPIED.
         mockMvc.perform(post("/v1/spots/occupy")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"type\":\"CAR\"}"))
+                .content("{\"vehicleType\":\"CAR\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(spotId.toString()))
                 .andExpect(jsonPath("$.type").value("CAR"))
                 .andExpect(jsonPath("$.status").value("OCCUPIED"));
+    }
+
+    @Test
+    @DisplayName("POST /v1/spots/occupy - debe seguir aceptando el payload antiguo con 'type'")
+    void occupy_ShouldAcceptLegacyTypeKey() throws Exception {
+        // QUE HACE:
+        // - Envia el payload que manda stay-service hoy, con la clave 'type'.
+        UUID spotId = UUID.randomUUID();
+        Spot occupiedSpot = Spot.reconstruct(spotId, VehicleType.CAR, SpotStatus.OCCUPIED);
+        SpotResponse mockResponse = new SpotResponse(spotId, VehicleType.CAR, SpotStatus.OCCUPIED);
+
+        when(occupySpotUseCase.execute(VehicleType.CAR)).thenReturn(occupiedSpot);
+        when(spotRestMapper.toResponse(any(SpotDTO.class))).thenReturn(mockResponse);
+
+        // QUE DEBERIA HACER:
+        // Debe resolverlo igual que vehicleType: el alias es lo que permite
+        // desplegar los dos servicios en cualquier orden.
+        mockMvc.perform(post("/v1/spots/occupy")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"type\":\"CAR\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(spotId.toString()));
     }
 
     @Test
@@ -218,23 +244,109 @@ class SpotRestAdapterTest {
     void updateStatus_ShouldReturnOk_WhenSpotStatusIsUpdated() throws Exception {
         // QUE HACE:
         // - Simula la actualización del estado de una plaza en el UseCase.
-        // - Envía una petición PATCH a /v1/spots/{id}/status con el nuevo tipo/estado.
+        // - Envía una petición PATCH a /v1/spots/{id}/status con el nuevo estado.
         UUID spotId = UUID.randomUUID();
-        
-        SpotDTO updatedSpot = new SpotDTO(spotId, VehicleType.CAR, SpotStatus.UNAVAILABLE);
+
+        Spot updatedSpot = Spot.reconstruct(spotId, VehicleType.CAR, SpotStatus.UNAVAILABLE);
         SpotResponse mockResponse = new SpotResponse(spotId, VehicleType.CAR, SpotStatus.UNAVAILABLE);
 
-        when(updateSpotStatusUseCase.execute(eq(spotId), any(SpotCreateDTO.class))).thenReturn(updatedSpot);
-        when(spotRestMapper.toResponse(updatedSpot)).thenReturn(mockResponse);
+        when(updateSpotStatusUseCase.execute(spotId, SpotStatus.UNAVAILABLE)).thenReturn(updatedSpot);
+        when(spotRestMapper.toResponse(any(SpotDTO.class))).thenReturn(mockResponse);
 
         // QUE DEBERIA HACER:
         // Debe retornar estado 200 OK y la plaza con el estado UNAVAILABLE reflejado.
         mockMvc.perform(patch("/v1/spots/{id}/status", spotId)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"type\":\"CAR\"}"))
+                .content("{\"status\":\"UNAVAILABLE\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(spotId.toString()))
                 .andExpect(jsonPath("$.type").value("CAR"))
                 .andExpect(jsonPath("$.status").value("UNAVAILABLE"));
+    }
+
+    @Test
+    @DisplayName("PATCH /v1/spots/{id}/status - debe retornar 409 CONFLICT si la transicion no esta permitida")
+    void updateStatus_ShouldReturnConflict_WhenTransitionIsForbidden() throws Exception {
+        // QUE HACE:
+        // - Configura el UseCase para lanzar SpotCannotBeBlockedException (plaza OCCUPIED o OCCUPIED solicitado).
+        // - Envía una petición PATCH a /v1/spots/{id}/status.
+        UUID spotId = UUID.randomUUID();
+
+        when(updateSpotStatusUseCase.execute(spotId, SpotStatus.UNAVAILABLE))
+                .thenThrow(new SpotCannotBeBlockedException("Para poner una plaza en mantenimiento, debe estar DISPONIBLE"));
+
+        // QUE DEBERIA HACER:
+        // Debe retornar estado 409 CONFLICT traducido por CustomizedExceptionAdapter.
+        mockMvc.perform(patch("/v1/spots/{id}/status", spotId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"status\":\"UNAVAILABLE\"}"))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
+    @DisplayName("GET /v1/spots/availability - debe retornar 200 OK con los contadores del tipo (HU-03)")
+    void checkAvailability_ShouldReturnOk_WithCounts() throws Exception {
+        // QUE HACE:
+        // - Configura el caso de uso y el mapper para el tipo CAR.
+        // - Ejecuta un GET a la ruta del contrato, /v1/spots/availability.
+        SpotAvailabilityDTO availability = new SpotAvailabilityDTO(VehicleType.CAR, 7L, 20L);
+        AvailabilityResponse mockResponse = new AvailabilityResponse(VehicleType.CAR, true, 7L, 20L);
+
+        when(availableSpotUseCase.execute(VehicleType.CAR)).thenReturn(availability);
+        when(spotRestMapper.toResponse(availability)).thenReturn(mockResponse);
+
+        // QUE DEBERIA HACER:
+        // Debe responder en la ruta del openapi.yml y con el cuerpo AvailabilityResponse,
+        // no un booleano suelto.
+        mockMvc.perform(get("/v1/spots/availability").param("type", "CAR"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.type").value("CAR"))
+                .andExpect(jsonPath("$.available").value(true))
+                .andExpect(jsonPath("$.availableCount").value(7))
+                .andExpect(jsonPath("$.totalCount").value(20));
+    }
+
+    @Test
+    @DisplayName("GET /v1/spots/availability sin type - debe retornar 400, no 500")
+    void checkAvailability_ShouldReturnBadRequest_WhenTypeIsMissing() throws Exception {
+        mockMvc.perform(get("/v1/spots/availability"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400));
+    }
+
+    @Test
+    @DisplayName("Ruta inexistente - debe retornar 404, no 500")
+    void unknownPath_ShouldReturnNotFound() throws Exception {
+        mockMvc.perform(get("/v1/spotss"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.status").value(404));
+    }
+
+    @Test
+    @DisplayName("La ruta antigua /available cae en GET /{id} y da 400, no 500")
+    void legacyAvailablePath_ShouldReturnBadRequest() throws Exception {
+        // /v1/spots/available encaja con el mapping /{id} e intenta parsear
+        // "available" como UUID. Antes salia como 500 por el catch-all.
+        mockMvc.perform(get("/v1/spots/available").param("type", "CAR"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400));
+    }
+
+    @Test
+    @DisplayName("Metodo no soportado - debe retornar 405, no 500")
+    void unsupportedMethod_ShouldReturnMethodNotAllowed() throws Exception {
+        mockMvc.perform(delete("/v1/spots/{id}", UUID.randomUUID()))
+                .andExpect(status().isMethodNotAllowed())
+                .andExpect(jsonPath("$.status").value(405));
+    }
+
+    @Test
+    @DisplayName("Content-Type no soportado - debe retornar 415, no 500")
+    void unsupportedMediaType_ShouldReturnUnsupportedMediaType() throws Exception {
+        mockMvc.perform(post("/v1/spots")
+                .contentType(MediaType.TEXT_PLAIN)
+                .content("type=CAR"))
+                .andExpect(status().isUnsupportedMediaType())
+                .andExpect(jsonPath("$.status").value(415));
     }
 }

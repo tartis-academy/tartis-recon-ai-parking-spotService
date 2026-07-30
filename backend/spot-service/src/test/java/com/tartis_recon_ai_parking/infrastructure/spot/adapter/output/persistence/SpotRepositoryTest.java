@@ -67,6 +67,10 @@ class SpotRepositoryTest {
         // QUE DEBERIA HACER:
         // Debe retornar exactamente 2, ignorando la plaza ocupada y la plaza de tipo MOTORBIKE.
         assertThat(count).isEqualTo(2L);
+
+        // countByType si cuenta las 3 CAR, ocupada incluida, e ignora la MOTORBIKE.
+        assertThat(spotRepository.countByType(VehicleType.CAR)).isEqualTo(3L);
+        assertThat(spotRepository.countByType(VehicleType.MOTORBIKE)).isEqualTo(1L);
     }
 
     @Test

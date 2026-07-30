@@ -4,6 +4,7 @@ import com.tartis_recon_ai_parking.application.spot.port.output.SpotPersistence;
 import com.tartis_recon_ai_parking.domain.spot.Spot;
 import com.tartis_recon_ai_parking.domain.spot.VehicleType;
 import com.tartis_recon_ai_parking.domain.spot.exception.NoAvailableSpotException;
+import org.springframework.transaction.annotation.Transactional;
 
 public class OccupySpotUseCase {
 
@@ -18,6 +19,7 @@ public class OccupySpotUseCase {
      * deniega con NoAvailableSpotException (el controlador la traduce a
      * la respuesta HTTP correspondiente via CustomizedExceptionAdapter).
      */
+    @Transactional
     public Spot execute(VehicleType vehicleType) {
         return spotPersistence.findAndOccupyAvailableSpot(vehicleType)
                 .orElseThrow(() -> new NoAvailableSpotException(
