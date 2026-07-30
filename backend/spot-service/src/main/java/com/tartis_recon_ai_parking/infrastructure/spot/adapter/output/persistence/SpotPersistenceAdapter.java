@@ -8,12 +8,10 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-
 import org.springframework.stereotype.Component;
 
 import com.tartis_recon_ai_parking.application.spot.port.output.SpotPersistence;
 import com.tartis_recon_ai_parking.domain.spot.Spot;
-import org.springframework.transaction.annotation.Transactional;
 
 
 
@@ -29,7 +27,6 @@ public class SpotPersistenceAdapter implements SpotPersistence {
     }
 
       @Override
-      @Transactional
     public Spot save(Spot spot) {
         SpotEntity saved = repository.save(mapper.toEntity(spot));
         return mapper.toDomain(saved);
@@ -53,24 +50,54 @@ public class SpotPersistenceAdapter implements SpotPersistence {
     }
     @Override
 public long countByTypeAndStatus(VehicleType type, SpotStatus status) {
-return repository.countByTypeAndStatus(type, status); 
+return repository.countByTypeAndStatus(type, status);
 }
 
-@Override
-    @Transactional
+    @Override
+    public long countByType(VehicleType type) {
+        return repository.countByType(type);
+    }
+
+    // Sin @Transactional: la frontera vive en OccupySpotUseCase.execute(), que
+    // es quien mantiene abierto el contexto de persistencia hasta el commit.
+    // De eso depende el dirty checking de mas abajo.
+    @Override
     public Optional<Spot> findAndOccupyAvailableSpot(VehicleType type) {
         return repository.findFirstAvailable(type)
                 .map(entity -> {
                     Spot spot = mapper.toDomain(entity);
                     spot.occupy();
-                    SpotEntity updated = repository.save(mapper.toEntity(spot));
-                    return mapper.toDomain(updated);
+
+                    // Se aplica el cambio sobre la entidad GESTIONADA (la misma
+                    // que findFirstAvailable dejo bloqueada con
+                    // PESSIMISTIC_WRITE), no sobre una copia.
+                    //
+                    // Antes esto era repository.save(mapper.toEntity(spot)), y
+                    // fallaba: el dominio Spot no lleva version, asi que
+                    // toEntity() devuelve una instancia NUEVA con el mismo id y
+                    // version=null. Spring Data mira la version en
+                    // JpaMetamodelEntityInformation.isNew(), la ve nula, la trata
+                    // como entidad nueva y hace persist() en vez de merge. Como
+                    // ya hay una instancia gestionada con ese id, revienta con
+                    //   NonUniqueObjectException: A different object with the
+                    //   same identifier value was already associated with this
+                    //   persistence context
+                    // que el handler traduce a un 409 "Violacion de integridad de
+                    // datos", y en el check-in se leia como "no hay plazas".
+                    //
+                    // Mutando la gestionada, el dirty checking emite el UPDATE al
+                    // hacer commit, la version sube sola y el bloqueo pesimista
+                    // sigue cubriendo la seccion critica.
+                    entity.setStatus(spot.getStatus());
+                    return mapper.toDomain(entity);
                 });
     }
 
+    // COUNT puro, sin bloqueo. La version anterior usaba findFirstAvailable
+    // (SELECT ... FOR UPDATE), que Postgres rechaza en transaccion readOnly y
+    // hacia fallar cada consulta de disponibilidad con un 500.
     @Override
-    @Transactional(readOnly = true)
     public boolean existsAvailableByType(VehicleType type) {
-        return repository.findFirstAvailable(type).isPresent();
+        return repository.countByTypeAndStatus(type, SpotStatus.AVAILABLE) > 0;
     }
 }
