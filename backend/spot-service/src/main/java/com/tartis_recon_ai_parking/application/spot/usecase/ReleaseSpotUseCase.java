@@ -10,6 +10,7 @@ import java.time.Instant;
 import java.util.UUID;
 import org.springframework.transaction.annotation.Transactional;
 
+@Transactional
 public class ReleaseSpotUseCase {
 
     private final SpotPersistence spotPersistence;
@@ -18,7 +19,6 @@ public class ReleaseSpotUseCase {
         this.spotPersistence = spotPersistence;
     }
 
-    @Transactional
     public SpotDTO execute(UUID id) {
         return execute(id, null);
     }
@@ -30,7 +30,7 @@ public class ReleaseSpotUseCase {
         if (eventOccurredAt != null && spot.getLastStatusChangeAt() != null 
                 && eventOccurredAt.isBefore(spot.getLastStatusChangeAt())) {
             throw new SpotEventOutdatedException(
-                    "El evento es de " + eventOccurredAt + " pero la plaza cambió de estado por última vez en " + spot.getLastStatusChangeAt()
+                    "La plaza " + id + " cambió de estado por última vez en " + spot.getLastStatusChangeAt() + " pero el evento es de " + eventOccurredAt
             );
         }
 

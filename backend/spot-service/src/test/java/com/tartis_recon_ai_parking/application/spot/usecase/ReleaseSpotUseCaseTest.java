@@ -106,4 +106,21 @@ public class ReleaseSpotUseCaseTest {
         assertNotNull(result);
         assertEquals(SpotStatus.AVAILABLE, result.getStatus());
     }
+
+    @Test
+    @DisplayName("Idempotencia: Debería liberar la plaza si lastStatusChangeAt es null (registros preexistentes / fail-open)")
+    void execute_ShouldReleaseSpot_WhenLastStatusChangeAtIsNull() {
+        UUID spotId = UUID.randomUUID();
+        java.time.Instant eventTime = java.time.Instant.now().minusSeconds(60);
+
+        // Plaza con lastStatusChangeAt == null
+        Spot spot = Spot.reconstruct(spotId, VehicleType.CAR, SpotStatus.OCCUPIED, null);
+        when(spotPersistence.findById(spotId)).thenReturn(Optional.of(spot));
+        when(spotPersistence.save(any(Spot.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        SpotDTO result = releaseSpotUseCase.execute(spotId, eventTime);
+
+        assertNotNull(result);
+        assertEquals(SpotStatus.AVAILABLE, result.getStatus());
+    }
 }

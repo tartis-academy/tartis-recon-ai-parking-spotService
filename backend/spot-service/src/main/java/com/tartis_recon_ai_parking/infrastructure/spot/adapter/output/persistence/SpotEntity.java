@@ -10,6 +10,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 
+import java.time.Instant;
 import java.util.UUID;
 
 /**
@@ -36,7 +37,7 @@ public class SpotEntity {
     private Long version;
 
     @Column(name = "last_status_change_at")
-    private java.time.Instant lastStatusChangeAt;
+    private Instant lastStatusChangeAt;
 
     protected SpotEntity() {
         // Requerido por JPA/Hibernate.
@@ -74,11 +75,11 @@ public class SpotEntity {
         this.version = version;
     }
 
-    public java.time.Instant getLastStatusChangeAt() {
+    public Instant getLastStatusChangeAt() {
         return lastStatusChangeAt;
     }
 
-    public void setLastStatusChangeAt(java.time.Instant lastStatusChangeAt) {
+    public void setLastStatusChangeAt(Instant lastStatusChangeAt) {
         this.lastStatusChangeAt = lastStatusChangeAt;
     }
 }

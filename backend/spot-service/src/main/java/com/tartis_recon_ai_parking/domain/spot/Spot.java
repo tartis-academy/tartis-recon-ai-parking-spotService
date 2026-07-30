@@ -28,7 +28,7 @@ public final class Spot {
     }
 
     public static Spot reconstruct(UUID id, VehicleType type, SpotStatus status){
-        return new Spot(id, type, status, Instant.now());
+        return new Spot(id, type, status, null);
     }
 
     //Class constructor.
