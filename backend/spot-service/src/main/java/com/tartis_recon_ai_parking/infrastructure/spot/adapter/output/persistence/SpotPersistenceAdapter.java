@@ -31,8 +31,7 @@ public class SpotPersistenceAdapter implements SpotPersistence {
     public Spot save(Spot spot) {
         return repository.findById(spot.getId())
                 .map(managed -> {
-                    managed.setType(spot.getType());
-                    managed.setStatus(spot.getStatus());
+                    mapper.updateEntity(managed, spot);
                     return mapper.toDomain(managed);
                 })
                 .orElseGet(() -> mapper.toDomain(repository.save(mapper.toEntity(spot))));

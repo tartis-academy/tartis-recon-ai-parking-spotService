@@ -68,7 +68,7 @@ class SpotPersistenceAdapterTest {
     }
 
     @Test
-    @DisplayName("Plaza existente: debe mutar la entidad gestionada y NO llamar a save() con una copia remapeada")
+    @DisplayName("Plaza existente: debe volcar el dominio sobre la entidad gestionada y NO llamar a save() con una copia remapeada")
     void shouldUpdateManagedEntity_WhenSpotAlreadyExists() {
         // QUE HACE:
         // - Simula una plaza que ya esta en BD y llega modificada desde el dominio.
@@ -88,12 +88,17 @@ class SpotPersistenceAdapterTest {
         Spot result = spotPersistenceAdapter.save(liberada);
 
         // QUE DEBERIA HACER:
-        // Debe aplicar el cambio sobre la instancia gestionada y dejar que el dirty
-        // checking emita el UPDATE al commit. NO debe pasar por toEntity()/save():
-        // esa copia lleva version=null, isNew() la daria por nueva y el persist()
-        // resultante revienta con NonUniqueObjectException.
-        assertThat(gestionada.getStatus()).isEqualTo(SpotStatus.AVAILABLE);
+        // Debe delegar el volcado en el mapper, sobre la instancia gestionada, y
+        // dejar que el dirty checking emita el UPDATE al commit. Aqui se verifica
+        // la interaccion porque el mapper esta mockeado; que el volcado copie de
+        // verdad todos los campos lo cubre SpotPersistenceAdapterJpaTest con el
+        // mapper generado por MapStruct.
+        verify(spotPersistenceMapper).updateEntity(gestionada, liberada);
         assertThat(result).isEqualTo(liberada);
+
+        // NO debe pasar por toEntity()/save(): esa copia lleva version=null,
+        // isNew() la daria por nueva y el persist() resultante revienta con
+        // NonUniqueObjectException al haber ya una gestionada con ese id.
         verify(spotRepository, never()).save(any(SpotEntity.class));
         verify(spotPersistenceMapper, never()).toEntity(any(Spot.class));
     }
