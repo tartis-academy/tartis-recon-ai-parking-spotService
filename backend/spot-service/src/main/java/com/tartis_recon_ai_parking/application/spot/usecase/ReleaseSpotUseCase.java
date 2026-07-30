@@ -4,7 +4,9 @@ import com.tartis_recon_ai_parking.application.spot.dto.SpotDTO;
 import com.tartis_recon_ai_parking.application.spot.factory.SpotDTOFactory;
 import com.tartis_recon_ai_parking.application.spot.port.output.SpotPersistence;
 import com.tartis_recon_ai_parking.domain.spot.Spot;
+import com.tartis_recon_ai_parking.domain.spot.exception.SpotEventOutdatedException;
 import com.tartis_recon_ai_parking.domain.spot.exception.SpotNotFoundException;
+import java.time.Instant;
 import java.util.UUID;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,13 +23,13 @@ public class ReleaseSpotUseCase {
         return execute(id, null);
     }
 
-    public SpotDTO execute(UUID id, java.time.Instant eventOccurredAt) {
+    public SpotDTO execute(UUID id, Instant eventOccurredAt) {
         Spot spot = spotPersistence.findById(id)
                 .orElseThrow(() -> new SpotNotFoundException("No existe una plaza con id " + id));
 
         if (eventOccurredAt != null && spot.getLastStatusChangeAt() != null 
                 && eventOccurredAt.isBefore(spot.getLastStatusChangeAt())) {
-            throw new com.tartis_recon_ai_parking.domain.spot.exception.SpotEventOutdatedException(
+            throw new SpotEventOutdatedException(
                     "El evento es de " + eventOccurredAt + " pero la plaza cambió de estado por última vez en " + spot.getLastStatusChangeAt()
             );
         }
