@@ -6,6 +6,7 @@ import com.tartis_recon_ai_parking.domain.spot.exception.NoAvailableSpotExceptio
 import com.tartis_recon_ai_parking.domain.spot.exception.SpotAlreadyOccupiedException;
 import com.tartis_recon_ai_parking.domain.spot.exception.SpotCannotBeBlockedException;
 import com.tartis_recon_ai_parking.domain.spot.exception.SpotDomainException;
+import com.tartis_recon_ai_parking.domain.spot.exception.SpotEventOutdatedException;
 import com.tartis_recon_ai_parking.domain.spot.exception.SpotNotAvailableException;
 import com.tartis_recon_ai_parking.domain.spot.exception.SpotNotBlockedException;
 import com.tartis_recon_ai_parking.domain.spot.exception.SpotNotFoundException;
@@ -105,7 +106,8 @@ public class CustomizedExceptionAdapter {
             SpotNotBlockedException.class,
             NoAvailableSpotException.class,
             SpotTypeChangeNotAllowedException.class,
-            UnsupportedSpotStatusTransitionException.class
+            UnsupportedSpotStatusTransitionException.class,
+            SpotEventOutdatedException.class
     })
     public ResponseEntity<ErrorResponse> handleConflict(SpotDomainException ex, HttpServletRequest request) {
         log.warn("Conflicto de negocio en {}: {}", request.getRequestURI(), ex.getMessage());

@@ -1,6 +1,7 @@
 package com.tartis_recon_ai_parking.infrastructure.spot.adapter.input.eventlistener;
 
 import com.tartis_recon_ai_parking.application.spot.usecase.ReleaseSpotUseCase;
+import com.tartis_recon_ai_parking.domain.spot.exception.SpotEventOutdatedException;
 import com.tartis_recon_ai_parking.domain.spot.exception.SpotNotOccupiedException;
 import com.tartis_recon_ai_parking.infrastructure.config.RabbitMQConfig;
 import com.tartis_recon_ai_parking.infrastructure.spot.adapter.input.eventlistener.dto.StayClosedEvent;
@@ -31,7 +32,7 @@ public class SpotEventListenerAdapter {
             Objects.requireNonNull(event.data(), "Event data cannot be null");
             Objects.requireNonNull(event.data().spotId(), "spotId cannot be null");
 
-            releaseSpotUseCase.execute(event.data().spotId());
+            releaseSpotUseCase.execute(event.data().spotId(), event.occurredAt());
             log.info("Plaza liberada exitosamente {}", event.data().spotId());
 
         } catch (SpotNotOccupiedException e) {
@@ -39,6 +40,10 @@ public class SpotEventListenerAdapter {
             // (ej. por un evento duplicado). Capturamos la excepción y la ignoramos 
             // para que RabbitMQ considere el mensaje procesado y no lo reintente infinitamente.
             log.warn("Idempotencia activada: La plaza {} ya estaba liberada o disponible. Ignorando evento duplicado.", event.data().spotId());
+        } catch (SpotEventOutdatedException e) {
+            // IDEMPOTENCIA AVANZADA: La plaza fue reasignada después de que se generara este evento.
+            // Ignoramos el evento obsoleto para evitar liberar la plaza del nuevo inquilino.
+            log.warn("Idempotencia activada: {}", e.getMessage());
         } catch (Exception e) {
             log.error("Error procesando StayClosedEvent: {}", e.getMessage(), e);
             // Relanzar la excepción para notificar a Spring AMQP.

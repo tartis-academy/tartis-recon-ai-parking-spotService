@@ -76,12 +76,32 @@ class SpotPersistenceMapperTest {
     @Test
     @DisplayName("Debe retornar null al mapear una entidad nula a dominio")
     void shouldReturnNullWhenMappingNullEntity() {
-        // QUE HACE:
-        // Llama al mapper pasando una entidad nula.
         Spot spot = mapper.toDomain(null);
-        
-        // QUE DEBERIA HACER:
-        // El mapper debe retornar null de forma segura y sin lanzar excepciones.
         assertThat(spot).isNull();
+    }
+
+    @Test
+    @DisplayName("Debe mapear lastStatusChangeAt bidireccionalmente entre Spot y SpotEntity")
+    void shouldMapLastStatusChangeAtBidirectionally() {
+        UUID id = UUID.randomUUID();
+        java.time.Instant now = java.time.Instant.now();
+
+        // 1. Dominio a Entidad
+        Spot domainSpot = Spot.reconstruct(id, VehicleType.CAR, SpotStatus.OCCUPIED, now);
+        SpotEntity entity = mapper.toEntity(domainSpot);
+
+        assertThat(entity).isNotNull();
+        assertThat(entity.getLastStatusChangeAt()).isEqualTo(now);
+
+        // 2. Entidad a Dominio
+        SpotEntity newEntity = new SpotEntity();
+        newEntity.setId(id);
+        newEntity.setType(VehicleType.CAR);
+        newEntity.setStatus(SpotStatus.OCCUPIED);
+        newEntity.setLastStatusChangeAt(now);
+
+        Spot remappedDomain = mapper.toDomain(newEntity);
+        assertThat(remappedDomain).isNotNull();
+        assertThat(remappedDomain.getLastStatusChangeAt()).isEqualTo(now);
     }
 }
