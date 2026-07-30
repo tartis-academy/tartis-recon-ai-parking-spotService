@@ -7,6 +7,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -22,6 +23,7 @@ import com.tartis_recon_ai_parking.application.spot.port.output.SpotPersistence;
 import com.tartis_recon_ai_parking.domain.spot.Spot;
 import com.tartis_recon_ai_parking.domain.spot.SpotStatus;
 import com.tartis_recon_ai_parking.domain.spot.VehicleType;
+import com.tartis_recon_ai_parking.domain.spot.exception.SpotEventOutdatedException;
 import com.tartis_recon_ai_parking.domain.spot.exception.SpotNotFoundException;
 
 @ExtendWith(MockitoExtension.class)
@@ -72,5 +74,55 @@ public class ReleaseSpotUseCaseTest {
         // QUE DEBERIA HACER:
         // Debe lanzar SpotNotFoundException y no se invoca el metodo save().
         assertThrows(SpotNotFoundException.class, () -> releaseSpotUseCase.execute(spotId));
+    }
+
+    @Test
+    @DisplayName("Idempotencia: Debería lanzar SpotEventOutdatedException si el evento ocurrió antes del último cambio de estado")
+    void execute_ShouldThrowSpotEventOutdatedException_WhenEventIsOlderThanLastStatusChange() {
+        UUID spotId = UUID.randomUUID();
+        Instant now = Instant.now();
+        Instant olderEventTime = now.minusSeconds(60);
+        
+        // Plaza cuyo último cambio de estado fue "now"
+        Spot spot = Spot.reconstruct(spotId, VehicleType.CAR, SpotStatus.OCCUPIED, now);
+        when(spotPersistence.findById(spotId)).thenReturn(Optional.of(spot));
+
+        // Debe lanzar SpotEventOutdatedException porque el evento ocurrió hace 60 segundos (antes de now)
+        assertThrows(SpotEventOutdatedException.class, 
+                () -> releaseSpotUseCase.execute(spotId, olderEventTime));
+    }
+
+    @Test
+    @DisplayName("Idempotencia: Debería liberar la plaza si el evento es posterior al último cambio de estado")
+    void execute_ShouldReleaseSpot_WhenEventIsNewerThanLastStatusChange() {
+        UUID spotId = UUID.randomUUID();
+        Instant pastTime = Instant.now().minusSeconds(120);
+        Instant newerEventTime = pastTime.plusSeconds(60);
+
+        Spot spot = Spot.reconstruct(spotId, VehicleType.CAR, SpotStatus.OCCUPIED, pastTime);
+        when(spotPersistence.findById(spotId)).thenReturn(Optional.of(spot));
+        when(spotPersistence.save(any(Spot.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        SpotDTO result = releaseSpotUseCase.execute(spotId, newerEventTime);
+
+        assertNotNull(result);
+        assertEquals(SpotStatus.AVAILABLE, result.getStatus());
+    }
+
+    @Test
+    @DisplayName("Idempotencia: Debería liberar la plaza si lastStatusChangeAt es null (registros preexistentes / fail-open)")
+    void execute_ShouldReleaseSpot_WhenLastStatusChangeAtIsNull() {
+        UUID spotId = UUID.randomUUID();
+        Instant eventTime = Instant.now().minusSeconds(60);
+
+        // Plaza con lastStatusChangeAt == null
+        Spot spot = Spot.reconstruct(spotId, VehicleType.CAR, SpotStatus.OCCUPIED, null);
+        when(spotPersistence.findById(spotId)).thenReturn(Optional.of(spot));
+        when(spotPersistence.save(any(Spot.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        SpotDTO result = releaseSpotUseCase.execute(spotId, eventTime);
+
+        assertNotNull(result);
+        assertEquals(SpotStatus.AVAILABLE, result.getStatus());
     }
 }

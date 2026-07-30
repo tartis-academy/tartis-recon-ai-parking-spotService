@@ -7,6 +7,7 @@ import com.tartis_recon_ai_parking.domain.spot.exception.SpotNotBlockedException
 import com.tartis_recon_ai_parking.domain.spot.exception.SpotNotOccupiedException;
 import com.tartis_recon_ai_parking.domain.spot.exception.SpotTypeChangeNotAllowedException;
 import com.tartis_recon_ai_parking.domain.spot.exception.SpotValidationException;
+import java.time.Instant;
 import java.util.UUID;
 
 public final class Spot {
@@ -14,25 +15,31 @@ public final class Spot {
     private final UUID id;
     private final VehicleType type;
     private SpotStatus status;
+    private Instant lastStatusChangeAt;
 
     //Creates a new spot with its own ID.
     public static Spot create(VehicleType type){
-        return new Spot(UUID.randomUUID(), type, SpotStatus.AVAILABLE);
+        return new Spot(UUID.randomUUID(), type, SpotStatus.AVAILABLE, Instant.now());
     }
 
     //Create a new spot with external data.
+    public static Spot reconstruct(UUID id, VehicleType type, SpotStatus status, Instant lastStatusChangeAt){
+        return new Spot(id, type, status, lastStatusChangeAt);
+    }
+
     public static Spot reconstruct(UUID id, VehicleType type, SpotStatus status){
-        return new Spot(id, type, status);
+        return new Spot(id, type, status, null);
     }
 
     //Class constructor.
-    private Spot(UUID id, VehicleType type, SpotStatus status) {
+    private Spot(UUID id, VehicleType type, SpotStatus status, Instant lastStatusChangeAt) {
 
         validateData(id, type, status);
 
         this.id = id;
         this.type = type;
         this.status = status;
+        this.lastStatusChangeAt = lastStatusChangeAt;
     }
 
     private void validateData(UUID id, VehicleType type, SpotStatus status){
@@ -53,6 +60,7 @@ public final class Spot {
             throw new SpotNotAvailableException("No se puede ocupar una plaza que se encuentra NO DISPONIBLE (en mantenimiento)");
         }
         this.status = SpotStatus.OCCUPIED;
+        this.lastStatusChangeAt = Instant.now();
     }
 
     public void release() {
@@ -60,6 +68,7 @@ public final class Spot {
             throw new SpotNotOccupiedException("Solo se debe liberar una plaza que se encuentre ya OCUPADA");
         }
         this.status = SpotStatus.AVAILABLE;
+        this.lastStatusChangeAt = Instant.now();
     }
 
     public void blockForMaintenance() {
@@ -67,6 +76,7 @@ public final class Spot {
             throw new SpotCannotBeBlockedException("Para poner una plaza en mantenimiento, debe estar DISPONIBLE");
         }
         this.status = SpotStatus.UNAVAILABLE;
+        this.lastStatusChangeAt = Instant.now();
     }
 
     public void unblock() {
@@ -74,6 +84,7 @@ public final class Spot {
             throw new SpotNotBlockedException("Solo se puede liberar una plaza que se encuentre NO DISPONIBLE");
         }
         this.status = SpotStatus.AVAILABLE;
+        this.lastStatusChangeAt = Instant.now();
     }
 
     // IN-05/IN-18: si la plaza esta OCUPADA hay una estancia en curso asociada y
@@ -83,7 +94,7 @@ public final class Spot {
             throw new SpotTypeChangeNotAllowedException(
                     "No se puede cambiar el tipo de una plaza OCUPADA: hay una estancia en curso asociada (IN-05/IN-18)");
         }
-        return new Spot(this.id, newType, this.status);
+        return new Spot(this.id, newType, this.status, this.lastStatusChangeAt);
     }
 
 
@@ -98,6 +109,10 @@ public final class Spot {
 
     public SpotStatus getStatus() {
         return status;
+    }
+
+    public Instant getLastStatusChangeAt() {
+        return lastStatusChangeAt;
     }
 
 }
