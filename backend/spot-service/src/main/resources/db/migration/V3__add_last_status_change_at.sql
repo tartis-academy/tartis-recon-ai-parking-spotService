@@ -1,0 +1,1 @@
+ALTER TABLE spots ADD COLUMN last_status_change_at TIMESTAMP WITH TIME ZONE;

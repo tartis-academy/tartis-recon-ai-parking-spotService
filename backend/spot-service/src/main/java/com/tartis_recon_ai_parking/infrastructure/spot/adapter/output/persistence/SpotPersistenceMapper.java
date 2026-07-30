@@ -34,6 +34,6 @@ public interface SpotPersistenceMapper {
 
     @ObjectFactory
     default Spot createSpot(SpotEntity entity) {
-        return Spot.reconstruct(entity.getId(), entity.getType(), entity.getStatus());
+        return Spot.reconstruct(entity.getId(), entity.getType(), entity.getStatus(), entity.getLastStatusChangeAt());
     }
 }

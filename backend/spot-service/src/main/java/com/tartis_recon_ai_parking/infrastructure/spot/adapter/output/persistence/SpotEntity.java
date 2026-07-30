@@ -35,6 +35,9 @@ public class SpotEntity {
     @Column(name = "version", nullable = false)
     private Long version;
 
+    @Column(name = "last_status_change_at")
+    private java.time.Instant lastStatusChangeAt;
+
     protected SpotEntity() {
         // Requerido por JPA/Hibernate.
     }
@@ -69,5 +72,13 @@ public class SpotEntity {
 
     public void setVersion(Long version) {
         this.version = version;
+    }
+
+    public java.time.Instant getLastStatusChangeAt() {
+        return lastStatusChangeAt;
+    }
+
+    public void setLastStatusChangeAt(java.time.Instant lastStatusChangeAt) {
+        this.lastStatusChangeAt = lastStatusChangeAt;
     }
 }

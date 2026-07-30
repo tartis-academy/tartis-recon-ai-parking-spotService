@@ -45,7 +45,7 @@ class SpotEventListenerAdapterTest {
         adapter.handleStayClosedEvent(event);
 
         // Assert
-        verify(releaseSpotUseCase, times(1)).execute(spotId);
+        verify(releaseSpotUseCase, times(1)).execute(eq(spotId), any(Instant.class));
     }
 
     @Test
@@ -89,14 +89,14 @@ class SpotEventListenerAdapterTest {
         );
 
         // Simula que la plaza ya está liberada y lanza la excepción del dominio
-        doThrow(new SpotNotOccupiedException("Ya está disponible")).when(releaseSpotUseCase).execute(spotId);
+        doThrow(new SpotNotOccupiedException("Ya está disponible")).when(releaseSpotUseCase).execute(eq(spotId), any(Instant.class));
 
         // Act
         // No debe lanzar excepción hacia arriba (se captura para idempotencia)
         adapter.handleStayClosedEvent(event);
 
         // Assert
-        verify(releaseSpotUseCase, times(1)).execute(spotId);
+        verify(releaseSpotUseCase, times(1)).execute(eq(spotId), any(Instant.class));
     }
 
     @Test
@@ -108,10 +108,10 @@ class SpotEventListenerAdapterTest {
         );
 
         // Simula otro error inesperado (ej. BD caída)
-        doThrow(new RuntimeException("Database error")).when(releaseSpotUseCase).execute(spotId);
+        doThrow(new RuntimeException("Database error")).when(releaseSpotUseCase).execute(eq(spotId), any(Instant.class));
 
         // Act & Assert
         assertThrows(RuntimeException.class, () -> adapter.handleStayClosedEvent(event));
-        verify(releaseSpotUseCase, times(1)).execute(spotId);
+        verify(releaseSpotUseCase, times(1)).execute(eq(spotId), any(Instant.class));
     }
 }
