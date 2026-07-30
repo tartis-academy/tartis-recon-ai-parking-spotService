@@ -200,34 +200,39 @@ class SpotPersistenceAdapterTest {
         // - Configura el repositorio para guardar la entidad ocupada.
         // - Ejecuta el metodo findAndOccupyAvailableSpot.
         UUID id = UUID.randomUUID();
-        SpotEntity availableEntity = new SpotEntity();
-        availableEntity.setId(id);
-        availableEntity.setType(VehicleType.CAR);
-        availableEntity.setStatus(SpotStatus.AVAILABLE);
 
-        Spot availableSpot = Spot.reconstruct(id, VehicleType.CAR, SpotStatus.AVAILABLE);
-        SpotEntity occupiedEntity = new SpotEntity();
-        occupiedEntity.setId(id);
-        occupiedEntity.setType(VehicleType.CAR);
-        occupiedEntity.setStatus(SpotStatus.OCCUPIED);
-        
-        Spot occupiedSpot = Spot.reconstruct(id, VehicleType.CAR, SpotStatus.OCCUPIED);
+        // La entidad que devuelve findFirstAvailable es la GESTIONADA por el
+        // contexto de persistencia (y la que queda bloqueada con
+        // PESSIMISTIC_WRITE). Es sobre esta sobre la que hay que aplicar el
+        // cambio.
+        SpotEntity managedEntity = new SpotEntity();
+        managedEntity.setId(id);
+        managedEntity.setType(VehicleType.CAR);
+        managedEntity.setStatus(SpotStatus.AVAILABLE);
+        managedEntity.setVersion(0L);
 
-        when(spotRepository.findFirstAvailable(VehicleType.CAR)).thenReturn(Optional.of(availableEntity));
-        when(spotPersistenceMapper.toDomain(availableEntity)).thenReturn(availableSpot);
-        when(spotPersistenceMapper.toEntity(any(Spot.class))).thenReturn(occupiedEntity);
-        when(spotRepository.save(occupiedEntity)).thenReturn(occupiedEntity);
-        when(spotPersistenceMapper.toDomain(occupiedEntity)).thenReturn(occupiedSpot);
+        Spot spot = Spot.reconstruct(id, VehicleType.CAR, SpotStatus.AVAILABLE);
+
+        when(spotRepository.findFirstAvailable(VehicleType.CAR)).thenReturn(Optional.of(managedEntity));
+        when(spotPersistenceMapper.toDomain(managedEntity)).thenReturn(spot);
 
         Optional<Spot> result = spotPersistenceAdapter.findAndOccupyAvailableSpot(VehicleType.CAR);
 
         // QUE DEBERIA HACER:
-        // Debe retornar un Optional con la plaza modificada a estado OCCUPIED.
-        // Debe asegurar que se llamo al metodo de busqueda y guardado.
+        // Ocupar la plaza mutando la entidad gestionada, y dejar que el dirty
+        // checking emita el UPDATE al hacer commit.
         assertThat(result).isPresent();
         assertThat(result.get().getStatus()).isEqualTo(SpotStatus.OCCUPIED);
+        assertThat(managedEntity.getStatus()).isEqualTo(SpotStatus.OCCUPIED);
         verify(spotRepository).findFirstAvailable(VehicleType.CAR);
-        verify(spotRepository).save(occupiedEntity);
+
+        // NO debe llamar a save() con una entidad remapeada. El dominio Spot no
+        // lleva version, asi que mapper.toEntity() devolveria una instancia
+        // nueva con el mismo id y version=null; Spring Data la trataria como
+        // nueva (isNew() mira la version) y haria persist(), que revienta con
+        // NonUniqueObjectException al haber ya una gestionada con ese id.
+        verify(spotRepository, never()).save(any(SpotEntity.class));
+        verify(spotPersistenceMapper, never()).toEntity(any(Spot.class));
     }
 
     @Test
