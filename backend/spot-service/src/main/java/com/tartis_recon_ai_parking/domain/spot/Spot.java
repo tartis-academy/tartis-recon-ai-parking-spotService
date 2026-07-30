@@ -94,7 +94,7 @@ public final class Spot {
             throw new SpotTypeChangeNotAllowedException(
                     "No se puede cambiar el tipo de una plaza OCUPADA: hay una estancia en curso asociada (IN-05/IN-18)");
         }
-        return new Spot(this.id, newType, this.status);
+        return new Spot(this.id, newType, this.status, this.lastStatusChangeAt);
     }
 
 
