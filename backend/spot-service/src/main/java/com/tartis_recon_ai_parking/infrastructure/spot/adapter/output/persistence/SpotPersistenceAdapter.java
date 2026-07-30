@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+
 import org.springframework.stereotype.Component;
 
 import com.tartis_recon_ai_parking.application.spot.port.output.SpotPersistence;
