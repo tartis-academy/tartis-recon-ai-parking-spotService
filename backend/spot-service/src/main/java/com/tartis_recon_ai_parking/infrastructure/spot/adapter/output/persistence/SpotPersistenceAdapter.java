@@ -7,7 +7,6 @@ import com.tartis_recon_ai_parking.domain.spot.SpotStatus;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import jakarta.transaction.Transactional;
 
 import org.springframework.stereotype.Component;
 
@@ -59,8 +58,10 @@ return repository.countByTypeAndStatus(type, status);
         return repository.countByType(type);
     }
 
-@Override
-@Transactional
+    // Sin @Transactional: la frontera vive en OccupySpotUseCase.execute(), que
+    // es quien mantiene abierto el contexto de persistencia hasta el commit.
+    // De eso depende el dirty checking de mas abajo.
+    @Override
     public Optional<Spot> findAndOccupyAvailableSpot(VehicleType type) {
         return repository.findFirstAvailable(type)
                 .map(entity -> {
@@ -92,10 +93,11 @@ return repository.countByTypeAndStatus(type, status);
                 });
     }
 
+    // COUNT puro, sin bloqueo. La version anterior usaba findFirstAvailable
+    // (SELECT ... FOR UPDATE), que Postgres rechaza en transaccion readOnly y
+    // hacia fallar cada consulta de disponibilidad con un 500.
     @Override
-    @Transactional
     public boolean existsAvailableByType(VehicleType type) {
-        // Consulta sin bloqueo: findFirstAvailable usa SELECT ... FOR UPDATE, prohibido en transaccion readOnly.
         return repository.countByTypeAndStatus(type, SpotStatus.AVAILABLE) > 0;
     }
 }
