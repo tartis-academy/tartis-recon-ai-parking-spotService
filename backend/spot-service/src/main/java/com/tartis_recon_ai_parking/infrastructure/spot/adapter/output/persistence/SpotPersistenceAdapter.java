@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+
 import org.springframework.stereotype.Component;
 
 import com.tartis_recon_ai_parking.application.spot.port.output.SpotPersistence;
@@ -26,10 +27,14 @@ public class SpotPersistenceAdapter implements SpotPersistence {
         this.mapper = mapper;
     }
 
-      @Override
+    @Override
     public Spot save(Spot spot) {
-        SpotEntity saved = repository.save(mapper.toEntity(spot));
-        return mapper.toDomain(saved);
+        return repository.findById(spot.getId())
+                .map(managed -> {
+                    mapper.updateEntity(managed, spot);
+                    return mapper.toDomain(managed);
+                })
+                .orElseGet(() -> mapper.toDomain(repository.save(mapper.toEntity(spot))));
     }
 
     @Override
@@ -58,9 +63,11 @@ return repository.countByTypeAndStatus(type, status);
         return repository.countByType(type);
     }
 
-    // Sin @Transactional: la frontera vive en OccupySpotUseCase.execute(), que
-    // es quien mantiene abierto el contexto de persistencia hasta el commit.
-    // De eso depende el dirty checking de mas abajo.
+    // La frontera transaccional vive en OccupySpotUseCase.execute(), no aqui:
+    // es esa transaccion la que mantiene GESTIONADA la entidad que devuelve
+    // findFirstAvailable, de modo que el dirty checking emita el UPDATE al
+    // hacer commit y el PESSIMISTIC_WRITE cubra toda la seccion critica.
+    // UseCaseTransactionBoundaryTest lo verifica por ambos lados.
     @Override
     public Optional<Spot> findAndOccupyAvailableSpot(VehicleType type) {
         return repository.findFirstAvailable(type)
