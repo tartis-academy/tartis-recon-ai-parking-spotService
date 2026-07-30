@@ -23,12 +23,14 @@ import org.springframework.dao.ConcurrencyFailureException;
 import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.dao.QueryTimeoutException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
+import org.springframework.transaction.CannotCreateTransactionException;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -117,9 +119,16 @@ public class CustomizedExceptionAdapter {
         return build(HttpStatus.CONFLICT, "Violación de integridad de datos en la persistencia.", request);
     }
 
+    // CannotCreateTransactionException no es una DataAccessException: extiende
+    // TransactionException -> NestedRuntimeException. Sin listarla aqui caia en
+    // el catch-all de Exception y la BD caida salia como 500 en vez de 503, que
+    // es justo el escenario mas comun: los casos de uso son @Transactional, asi
+    // que con Postgres inaccesible Spring falla al ABRIR la transaccion, antes
+    // de llegar al repositorio y de que exista nada que traducir.
     @ExceptionHandler({
             DataAccessResourceFailureException.class,
-            QueryTimeoutException.class
+            QueryTimeoutException.class,
+            CannotCreateTransactionException.class
     })
     public ResponseEntity<ErrorResponse> handleDatabaseUnavailable(Exception ex, HttpServletRequest request) {
         log.error("Fallo de conexión o timeout de base de datos en {}: {}", request.getRequestURI(), ex.getMessage(),
@@ -130,6 +139,7 @@ public class CustomizedExceptionAdapter {
     @ExceptionHandler({
             CannotAcquireLockException.class,
             PessimisticLockingFailureException.class,
+            OptimisticLockingFailureException.class,
             ObjectOptimisticLockingFailureException.class,
             ConcurrencyFailureException.class
     })

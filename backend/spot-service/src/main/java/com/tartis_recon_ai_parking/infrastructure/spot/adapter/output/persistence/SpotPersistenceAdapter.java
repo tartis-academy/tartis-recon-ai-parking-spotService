@@ -29,8 +29,12 @@ public class SpotPersistenceAdapter implements SpotPersistence {
 
     @Override
     public Spot save(Spot spot) {
-        SpotEntity saved = repository.save(mapper.toEntity(spot));
-        return mapper.toDomain(saved);
+        return repository.findById(spot.getId())
+                .map(managed -> {
+                    mapper.updateEntity(managed, spot);
+                    return mapper.toDomain(managed);
+                })
+                .orElseGet(() -> mapper.toDomain(repository.save(mapper.toEntity(spot))));
     }
 
     @Override
@@ -96,9 +100,11 @@ return repository.countByTypeAndStatus(type, status);
                 });
     }
 
+    // COUNT puro, sin bloqueo. La version anterior usaba findFirstAvailable
+    // (SELECT ... FOR UPDATE), que Postgres rechaza en transaccion readOnly y
+    // hacia fallar cada consulta de disponibilidad con un 500.
     @Override
     public boolean existsAvailableByType(VehicleType type) {
-        // Consulta sin bloqueo: findFirstAvailable usa SELECT ... FOR UPDATE, prohibido en transaccion readOnly.
         return repository.countByTypeAndStatus(type, SpotStatus.AVAILABLE) > 0;
     }
 }
