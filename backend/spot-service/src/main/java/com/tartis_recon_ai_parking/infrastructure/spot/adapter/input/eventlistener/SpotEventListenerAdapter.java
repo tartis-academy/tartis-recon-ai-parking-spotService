@@ -41,7 +41,10 @@ public class SpotEventListenerAdapter {
             log.warn("Idempotencia activada: La plaza {} ya estaba liberada o disponible. Ignorando evento duplicado.", event.data().spotId());
         } catch (Exception e) {
             log.error("Error procesando StayClosedEvent: {}", e.getMessage(), e);
-            throw e; // Relanzar para encolar de nuevo o enviar a DLQ (manejado por Spring AMQP)
+            // Relanzar la excepción para notificar a Spring AMQP.
+            // NOTA: Dado que default-requeue-rejected=false y no hay DLQ configurada en la Queue,
+            // RabbitMQ descartará el mensaje rechazado sin reenviarlo a la cola.
+            throw e;
         }
     }
 }
