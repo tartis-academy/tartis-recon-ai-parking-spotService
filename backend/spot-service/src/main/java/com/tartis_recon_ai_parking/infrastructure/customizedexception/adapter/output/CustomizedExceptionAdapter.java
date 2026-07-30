@@ -40,6 +40,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 @RestControllerAdvice
@@ -162,6 +163,22 @@ public class CustomizedExceptionAdapter {
                 request);
     }
 
+    /**
+     * HTTP 401 Unauthorized: El token de autenticación está ausente, es inválido o ha caducado.
+     * <p>
+     * Diagnóstico para el equipo: El problema reside en la forma en que el frontend envía el token de autenticación.
+     */
+    @ExceptionHandler(AuthenticationException.class)
+    public ResponseEntity<ErrorResponse> handleUnauthorized(AuthenticationException ex, HttpServletRequest request) {
+        log.warn("Autenticación fallida o token inválido en {}: {}", request.getRequestURI(), ex.getMessage());
+        return build(HttpStatus.UNAUTHORIZED, "Token de autenticación ausente, inválido o caducado.", request);
+    }
+
+    /**
+     * HTTP 403 Forbidden: El token de autenticación es válido pero el usuario no posee el rol necesario.
+     * <p>
+     * Diagnóstico para el equipo: El problema reside en los roles configurados asignados a la identidad.
+     */
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ErrorResponse> handleAccessDenied(AccessDeniedException ex, HttpServletRequest request) {
         log.warn("Acceso denegado en {}: {}", request.getRequestURI(), ex.getMessage());
