@@ -14,7 +14,7 @@ Este documento establece el procedimiento operativo, responsabilidades e impacto
 ### 🚨 Impacto de un mensaje en la DLQ:
 Un mensaje en la DLQ de `spot-service` representa una estancia que ha finalizado pero la plaza de parking correspondiente **ha permanecido en estado `OCCUPIED`** en el inventario.
 - **Riesgo:** Inconsistencia de inventario. El sistema considera que la plaza está ocupada por un coche que ya salió, impidiendo que nuevos vehículos la ocupen.
-- **Causa típica:** Fallos persistentes de conexión con la base de datos de plazas o errores no recuperables de infraestructura tras 6 intentos con backoff exponencial.
+- **Causa típica:** Fallos persistentes de conexión con la base de datos de plazas o errores no recuperables de infraestructura tras 6 intentos con backoff exponencial (~25 segundos de ventana total).
 
 ---
 
@@ -52,6 +52,7 @@ graph TD
 Si la causa fue una caída temporal que ya ha sido resuelta:
 1. Usar la funcionalidad de **Move Messages** (o reenviar mediante la UI/script) desde `spot-service-stay-closed-dlq` hacia la cola principal `spot-service-stay-closed-queue`.
 2. Verificar en los logs de `spot-service` que la plaza ha cambiado a estado `AVAILABLE`.
+*Nota sobre tiempo de consumo:* Con 6 intentos y backoff exponencial, cada mensaje problemático consume ~25 s en total (1s + 2s + 4s + 8s + 10s). El servicio tiene configurada una concurrencia de 3 a 5 hilos de consumidor (`concurrency=3`, `max-concurrency=5`) para evitar paralizar el procesamiento de otros mensajes válidos durante ese intervalo.
 
 #### Opción B: Fallo por Evento no Procesable o Inconsistencia
 Si el mensaje no se puede procesar automáticamente:
@@ -70,11 +71,17 @@ Si el mensaje no se puede procesar automáticamente:
 ### ⚠️ Re-declaración de Cola Existente en RabbitMQ (`PRECONDITION_FAILED`)
 Dado que la cola `spot-service-stay-closed-queue` se declaró originalmente sin argumentos de DLQ, RabbitMQ no permite modificar los argumentos de una cola existente sobre la marcha y responderá con el error `PRECONDITION_FAILED` al arrancar el servicio si la cola ya existe en el broker.
 
-**Instrucciones de Despliegue (Paso Previo Obligatorio):**
-Antes de desplegar esta versión en un entorno donde la cola ya exista (dev, demo, prod):
-1. Acceder a RabbitMQ Management UI (`http://localhost:15672`) -> **Queues** -> Seleccionar `spot-service-stay-closed-queue` -> **Delete Queue**.
-2. O ejecutar vía CLI:
-   ```bash
-   rabbitmqctl delete_queue spot-service-stay-closed-queue
-   ```
-3. Una vez eliminada, desplegar `spot-service`. El servicio re-creará la cola automáticamente incorporando los argumentos `x-dead-letter-exchange` y `x-dead-letter-routing-key`.
+**Opción 1: Eliminación previa de la cola (recomendado si no hay mensajes en vuelo)**
+```bash
+docker exec parking-rabbitmq rabbitmqctl delete_queue spot-service-stay-closed-queue
+```
+O desde RabbitMQ Management UI (`http://localhost:15672`) -> **Queues** -> Seleccionar `spot-service-stay-closed-queue` -> **Delete Queue**.
+
+**Opción 2: Aplicación mediante Policy en RabbitMQ (sin borrado de cola)**
+```bash
+docker exec parking-rabbitmq rabbitmqctl set_policy spot-dlq "^spot-service-stay-closed-queue$" \
+  '{"dead-letter-exchange":"spot-service-stay-closed-dlx", "dead-letter-routing-key":"spot-service-stay-closed-dead-letter"}' \
+  --apply-to queues
+```
+
+*Nota sobre retenimiento:* La cola DLQ `spot-service-stay-closed-dlq` no se configura con TTL ni `x-max-length` para garantizar que ningún evento no procesado caduque o se pierda antes de la revisión por Soporte L2.
