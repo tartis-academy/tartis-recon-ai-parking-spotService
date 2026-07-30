@@ -109,7 +109,7 @@ public class CustomizedExceptionAdapter {
             UnsupportedSpotStatusTransitionException.class,
             SpotEventOutdatedException.class
     })
-    public ResponseEntity<ErrorResponse> handleConflict(RuntimeException ex, HttpServletRequest request) {
+    public ResponseEntity<ErrorResponse> handleConflict(SpotDomainException ex, HttpServletRequest request) {
         log.warn("Conflicto de negocio en {}: {}", request.getRequestURI(), ex.getMessage());
         return build(HttpStatus.CONFLICT, ex.getMessage(), request);
     }
