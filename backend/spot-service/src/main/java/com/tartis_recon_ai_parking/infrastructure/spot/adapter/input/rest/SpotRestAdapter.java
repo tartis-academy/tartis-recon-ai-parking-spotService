@@ -6,9 +6,9 @@ import java.util.stream.Collectors;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
-
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -70,6 +70,7 @@ public class SpotRestAdapter {
     }
 
     @PatchMapping("/{id}/status")
+    @PreAuthorize("hasAnyRole('ADMIN', 'OPERARIO')")
     public ResponseEntity<SpotResponse> updateStatus(@PathVariable UUID id,
             @Valid @RequestBody SpotStatusRequest request) {
 
@@ -79,6 +80,7 @@ public class SpotRestAdapter {
     }
 
     @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<SpotResponse> create(@Valid @RequestBody SpotRequest request) {
         SpotCreateDTO createDTO = new SpotCreateDTO(request.getType());
         SpotDTO created = createSpotUseCase.execute(createDTO);
@@ -86,6 +88,7 @@ public class SpotRestAdapter {
     }
 
     @GetMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'OPERARIO')")
     public ResponseEntity<List<SpotResponse>> getAll() {
         List<SpotResponse> spots = getSpotUseCase.getAll().stream()
                 .map(spotRestMapper::toResponse)
@@ -94,12 +97,14 @@ public class SpotRestAdapter {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'OPERARIO')")
     public ResponseEntity<SpotResponse> getById(@PathVariable UUID id) {
         SpotDTO spot = getSpotUseCase.getById(id);
         return ResponseEntity.ok(spotRestMapper.toResponse(spot));
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<SpotResponse> update(@PathVariable UUID id, @Valid @RequestBody SpotRequest request) {
         SpotCreateDTO createDTO = new SpotCreateDTO(request.getType());
         SpotDTO updated = updateSpotUseCase.execute(id, createDTO);
@@ -107,18 +112,21 @@ public class SpotRestAdapter {
     }
 
     @PostMapping("/occupy")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<SpotResponse> occupy(@Valid @RequestBody SpotOccupyRequest request) {
         Spot occupied = occupySpotUseCase.execute(request.getVehicleType());
         return ResponseEntity.ok(spotRestMapper.toResponse(SpotDTOFactory.from(occupied)));
     }
 
     @PostMapping("/{id}/release")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<SpotResponse> release(@PathVariable UUID id) {
         SpotDTO released = releaseSpotUseCase.execute(id);
         return ResponseEntity.ok(spotRestMapper.toResponse(released));
     }
 
     @GetMapping("/availability")
+    @PreAuthorize("hasAnyRole('ADMIN', 'OPERARIO')")
     public ResponseEntity<AvailabilityResponse> checkAvailability(@RequestParam VehicleType type) {
         SpotAvailabilityDTO availability = availableSpotUseCase.execute(type);
         return ResponseEntity.ok(spotRestMapper.toResponse(availability));
