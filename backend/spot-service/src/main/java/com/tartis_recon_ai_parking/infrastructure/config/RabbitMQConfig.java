@@ -23,7 +23,10 @@ public class RabbitMQConfig {
 
     @Bean
     public Queue spotStayClosedQueue() {
-        return new Queue(STAY_CLOSED_QUEUE);
+        return org.springframework.amqp.core.QueueBuilder.durable(STAY_CLOSED_QUEUE)
+                .withArgument("x-dead-letter-exchange", "spot-service-stay-closed-dlx")
+                .withArgument("x-dead-letter-routing-key", "spot-service-stay-closed-dead-letter")
+                .build();
     }
 
     @Bean
@@ -31,6 +34,26 @@ public class RabbitMQConfig {
         return BindingBuilder.bind(spotStayClosedQueue)
                 .to(parkingEventsExchange)
                 .with(ROUTING_KEY_STAY_CLOSED);
+    }
+
+    // =========================================================================
+    // DEAD LETTER QUEUE (DLQ) & EXCHANGE (DLX) PARA CONSUMIDOR SPOT SERVICE
+    // =========================================================================
+    @Bean
+    public TopicExchange spotStayClosedDLX() {
+        return new TopicExchange("spot-service-stay-closed-dlx");
+    }
+
+    @Bean
+    public Queue spotStayClosedDLQ() {
+        return org.springframework.amqp.core.QueueBuilder.durable("spot-service-stay-closed-dlq").build();
+    }
+
+    @Bean
+    public Binding bindingSpotStayClosedDLQ(Queue spotStayClosedDLQ, TopicExchange spotStayClosedDLX) {
+        return BindingBuilder.bind(spotStayClosedDLQ)
+                .to(spotStayClosedDLX)
+                .with("spot-service-stay-closed-dead-letter");
     }
 
     @Bean
