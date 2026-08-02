@@ -34,6 +34,8 @@ import com.tartis_recon_ai_parking.domain.spot.exception.SpotNotBlockedException
 import com.tartis_recon_ai_parking.domain.spot.exception.SpotNotFoundException;
 import com.tartis_recon_ai_parking.domain.spot.exception.SpotNotOccupiedException;
 import com.tartis_recon_ai_parking.domain.spot.exception.SpotValidationException;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.BadCredentialsException;
 import com.tartis_recon_ai_parking.infrastructure.customizedexception.adapter.output.dto.ErrorResponse;
 
 class CustomizedExceptionAdapterTest {
@@ -206,6 +208,36 @@ class CustomizedExceptionAdapterTest {
         assertEquals(500, response.getBody().status());
         assertEquals("Internal Server Error", response.getBody().error());
         assertEquals("Ha ocurrido un error en la capa de datos de persistencia.", response.getBody().message());
+    }
+
+    @Test
+    @DisplayName("Debe retornar UNAUTHORIZED (401) cuando se lanza AuthenticationException")
+    void handleUnauthorized_ShouldReturnUnauthorizedStatus() {
+        BadCredentialsException authEx = new BadCredentialsException("Token no válido");
+
+        ResponseEntity<ErrorResponse> response = exceptionAdapter.handleUnauthorized(authEx, request);
+
+        assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertEquals(401, response.getBody().status());
+        assertEquals("Unauthorized", response.getBody().error());
+        assertEquals("Token de autenticación ausente, inválido o caducado.", response.getBody().message());
+        assertEquals("/v1/spots/test", response.getBody().path());
+    }
+
+    @Test
+    @DisplayName("Debe retornar FORBIDDEN (403) cuando se lanza AccessDeniedException")
+    void handleAccessDenied_ShouldReturnForbiddenStatus() {
+        AccessDeniedException accessEx = new AccessDeniedException("Rol insuficiente");
+
+        ResponseEntity<ErrorResponse> response = exceptionAdapter.handleAccessDenied(accessEx, request);
+
+        assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertEquals(403, response.getBody().status());
+        assertEquals("Forbidden", response.getBody().error());
+        assertEquals("No tiene permisos para realizar esta acción.", response.getBody().message());
+        assertEquals("/v1/spots/test", response.getBody().path());
     }
 
     @Test
