@@ -1,6 +1,7 @@
 package com.tartis_recon_ai_parking.infrastructure.config;
 
 import com.tartis_recon_ai_parking.application.spot.usecase.*;
+import com.tartis_recon_ai_parking.infrastructure.spot.adapter.input.eventlistener.SpotEventListenerAdapter;
 import com.tartis_recon_ai_parking.infrastructure.spot.adapter.input.rest.SpotRestMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -32,7 +33,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * HandlerExceptionResolver → CustomizedExceptionAdapter, produciendo un
  * ErrorResponse con estructura definida en lugar de la respuesta por defecto de Spring.
  */
-@SpringBootTest
+@SpringBootTest(properties = "spring.rabbitmq.listener.simple.auto-startup=false")
 class SecurityConfigExceptionHandlingTest {
 
     private MockMvc mockMvc;
@@ -40,6 +41,8 @@ class SecurityConfigExceptionHandlingTest {
     @Autowired
     private WebApplicationContext context;
 
+    @MockitoBean
+    private SpotEventListenerAdapter spotEventListenerAdapter;
     @MockitoBean private CreateSpotUseCase createSpotUseCase;
     @MockitoBean private GetSpotUseCase getSpotUseCase;
     @MockitoBean private UpdateSpotUseCase updateSpotUseCase;
