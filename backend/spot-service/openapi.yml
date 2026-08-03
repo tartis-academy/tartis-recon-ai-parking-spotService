@@ -45,6 +45,10 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/SpotResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '400':
           $ref: '#/components/responses/BadRequest'
         '500':
@@ -68,6 +72,10 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SpotResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '400':
           $ref: '#/components/responses/BadRequest'
         '500':
@@ -87,6 +95,10 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SpotResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/SpotNotFound'
         '500':
@@ -114,6 +126,10 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SpotResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '400':
           $ref: '#/components/responses/BadRequest'
         '404':
@@ -151,6 +167,10 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AvailabilityResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '400':
           $ref: '#/components/responses/BadRequest'
         '500':
@@ -178,6 +198,10 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SpotResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '400':
           $ref: '#/components/responses/BadRequest'
         '409':
@@ -204,6 +228,10 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SpotResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/SpotNotFound'
         '409':
@@ -239,6 +267,10 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SpotResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '400':
           $ref: '#/components/responses/BadRequest'
         '404':
@@ -360,6 +392,18 @@ components:
   responses:
     BadRequest:
       description: Invalid request (field or domain validation)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Unauthorized:
+      description: Token ausente, inválido o caducado
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Forbidden:
+      description: El token es válido pero el rol no autoriza la operación
       content:
         application/json:
           schema:
