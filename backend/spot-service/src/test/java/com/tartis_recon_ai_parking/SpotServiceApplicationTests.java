@@ -1,14 +1,19 @@
 package com.tartis_recon_ai_parking;
 
+import com.tartis_recon_ai_parking.infrastructure.spot.adapter.input.eventlistener.SpotEventListenerAdapter;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@SpringBootTest
+@SpringBootTest(properties = "spring.rabbitmq.listener.simple.auto-startup=false")
 @DisplayName("Tests de arranque de la aplicacion (SpotServiceApplication)")
 class SpotServiceApplicationTests {
+
+    @MockitoBean
+    private SpotEventListenerAdapter spotEventListenerAdapter;
 
     @Test
     @DisplayName("Debe cargar correctamente el contexto de Spring Boot")
@@ -28,7 +33,8 @@ class SpotServiceApplicationTests {
         // QUE HACE:
         // Ejecuta explicitamente el metodo main de la clase principal, pasando argumentos
         // mockeados (como "--server.port=0") para evitar colisiones de puerto en entorno local.
-        SpotServiceApplication.main(new String[]{"--server.port=0"});
+        SpotServiceApplication.main(new String[]{"--server.port=0",
+                "--spring.rabbitmq.listener.simple.auto-startup=false"});
         
         // QUE DEBERIA HACER:
         // El proceso principal debe terminar de levantar o delegar el inicio de la app sin arrojar excepciones.
