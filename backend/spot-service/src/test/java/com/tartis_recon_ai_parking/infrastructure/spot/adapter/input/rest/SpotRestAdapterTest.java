@@ -46,10 +46,11 @@ import com.tartis_recon_ai_parking.domain.spot.Spot;
 import com.tartis_recon_ai_parking.domain.spot.SpotStatus;
 import com.tartis_recon_ai_parking.domain.spot.VehicleType;
 import com.tartis_recon_ai_parking.domain.spot.exception.SpotCannotBeBlockedException;
+import com.tartis_recon_ai_parking.infrastructure.spot.adapter.input.eventlistener.SpotEventListenerAdapter;
 import com.tartis_recon_ai_parking.infrastructure.spot.adapter.input.rest.dto.response.AvailabilityResponse;
 import com.tartis_recon_ai_parking.infrastructure.spot.adapter.input.rest.dto.response.SpotResponse;
 
-@SpringBootTest
+@SpringBootTest(properties = "spring.rabbitmq.listener.simple.auto-startup=false")
 class SpotRestAdapterTest {
 
     private static final SimpleGrantedAuthority ADMIN_AUTHORITY = new SimpleGrantedAuthority("ROLE_ADMIN");
@@ -91,6 +92,9 @@ class SpotRestAdapterTest {
 
     @MockitoBean
     private AvailableSpotUseCase availableSpotUseCase;
+
+    @MockitoBean
+    private SpotEventListenerAdapter spotEventListenerAdapter;
 
     // =========================================================================
     // PRUEBAS DE FUNCIONALIDAD (ROL: ADMIN)
