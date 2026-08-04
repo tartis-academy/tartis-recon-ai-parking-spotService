@@ -2,6 +2,8 @@ package com.tartis_recon_ai_parking.application.spot.usecase;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.tartis_recon_ai_parking.application.spot.dto.SpotStatusChangedEvent;
+import com.tartis_recon_ai_parking.application.spot.port.output.SpotEventPublisher;
 import com.tartis_recon_ai_parking.application.spot.port.output.SpotPersistence;
 import com.tartis_recon_ai_parking.domain.spot.Spot;
 import com.tartis_recon_ai_parking.domain.spot.SpotStatus;
@@ -10,6 +12,7 @@ import com.tartis_recon_ai_parking.domain.spot.exception.NoAvailableSpotExceptio
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -18,6 +21,10 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -26,6 +33,9 @@ class OccupySpotUseCaseTest {
 
     @Mock
     private SpotPersistence spotPersistence;
+
+    @Mock
+    private SpotEventPublisher eventPublisher;
 
     @InjectMocks
     private OccupySpotUseCase occupySpotUseCase;
@@ -48,6 +58,14 @@ class OccupySpotUseCaseTest {
         // Debe retornar la plaza en estado OCCUPIED.
         assertThat(result).isNotNull();
         assertThat(result.getStatus()).isEqualTo(SpotStatus.OCCUPIED);
+
+        ArgumentCaptor<SpotStatusChangedEvent> eventCaptor = ArgumentCaptor.forClass(SpotStatusChangedEvent.class);
+        verify(eventPublisher).publish(eventCaptor.capture());
+        SpotStatusChangedEvent published = eventCaptor.getValue();
+
+        assertThat(published.type()).isEqualTo("SpotStatusChangedEvent");
+        assertThat(published.data().spotId()).isEqualTo(spotId);
+        assertThat(published.data().status()).isEqualTo(SpotStatus.OCCUPIED);
     }
 
     @Test
@@ -63,5 +81,22 @@ class OccupySpotUseCaseTest {
         // Debe lanzar una excepcion indicando que no hay plazas.
         assertThatThrownBy(() -> occupySpotUseCase.execute(VehicleType.CAR))
                 .isInstanceOf(NoAvailableSpotException.class);
+    }
+
+    @Test
+    @DisplayName("Si publicar SpotStatusChangedEvent falla, se registra pero no se propaga: la plaza ya se ocupo")
+    void execute_ShouldSwallowEventPublishFailure() {
+        UUID spotId = UUID.randomUUID();
+        Spot occupiedSpot = Spot.reconstruct(spotId, VehicleType.CAR, SpotStatus.OCCUPIED);
+
+        when(spotPersistence.findAndOccupyAvailableSpot(VehicleType.CAR))
+                .thenReturn(Optional.of(occupiedSpot));
+        doThrow(new IllegalStateException("rabbitmq no disponible"))
+                .when(eventPublisher).publish(any(SpotStatusChangedEvent.class));
+
+        Spot result = assertDoesNotThrow(() -> occupySpotUseCase.execute(VehicleType.CAR));
+
+        assertThat(result.getStatus()).isEqualTo(SpotStatus.OCCUPIED);
+        verify(eventPublisher).publish(any(SpotStatusChangedEvent.class));
     }
 }

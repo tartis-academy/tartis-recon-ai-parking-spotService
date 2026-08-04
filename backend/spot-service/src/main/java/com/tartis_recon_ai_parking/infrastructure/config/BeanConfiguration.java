@@ -1,5 +1,6 @@
 package com.tartis_recon_ai_parking.infrastructure.config;
 
+import com.tartis_recon_ai_parking.application.spot.port.output.SpotEventPublisher;
 import com.tartis_recon_ai_parking.application.spot.port.output.SpotPersistence;
 import com.tartis_recon_ai_parking.application.spot.usecase.AvailableSpotUseCase;
 import com.tartis_recon_ai_parking.application.spot.usecase.CreateSpotUseCase;
@@ -30,18 +31,18 @@ public class BeanConfiguration {
     }
 
     @Bean
-    public UpdateSpotStatusUseCase updateSpotStatusUseCase(SpotPersistence spotPersistence) {
-        return new UpdateSpotStatusUseCase(spotPersistence);
+    public UpdateSpotStatusUseCase updateSpotStatusUseCase(SpotPersistence spotPersistence, SpotEventPublisher eventPublisher) {
+        return new UpdateSpotStatusUseCase(spotPersistence, eventPublisher);
     }
 
     @Bean
-    public OccupySpotUseCase occupySpotUseCase(SpotPersistence spotPersistence) {
-        return new OccupySpotUseCase(spotPersistence);
+    public OccupySpotUseCase occupySpotUseCase(SpotPersistence spotPersistence, SpotEventPublisher eventPublisher) {
+        return new OccupySpotUseCase(spotPersistence, eventPublisher);
     }
 
     @Bean
-    public ReleaseSpotUseCase releaseSpotUseCase(SpotPersistence spotPersistence) {
-        return new ReleaseSpotUseCase(spotPersistence);
+    public ReleaseSpotUseCase releaseSpotUseCase(SpotPersistence spotPersistence, SpotEventPublisher eventPublisher) {
+        return new ReleaseSpotUseCase(spotPersistence, eventPublisher);
     }
 
     @Bean

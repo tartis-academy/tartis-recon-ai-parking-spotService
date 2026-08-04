@@ -19,6 +19,7 @@ public class RabbitMQConfig {
     public static final String STAY_CLOSED_QUEUE = "spot-service-stay-closed-queue";
     public static final String EXCHANGE = "parking-events-exchange";
     public static final String ROUTING_KEY_STAY_CLOSED = "stay-closed-v1";
+    public static final String ROUTING_KEY_SPOT_STATUS_CHANGED = "spot-status-changed-v1";
     public static final String DLX_EXCHANGE = "spot-service-stay-closed-dlx";
     public static final String DLQ_ROUTING_KEY = "spot-service-stay-closed-dead-letter";
     public static final String DLQ_NAME = "spot-service-stay-closed-dlq";
