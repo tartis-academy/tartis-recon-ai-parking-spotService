@@ -631,4 +631,13 @@ class SpotRestAdapterTest {
                 .andExpect(jsonPath("$.status").value(503))
                 .andExpect(jsonPath("$.message").value("El servicio de datos no está disponible temporalmente."));
     }
+
+    @Test
+    @DisplayName("SEC-12 / SEC-03: Peticion sin token a POST /v1/spots/occupy retorna 401 UNAUTHORIZED")
+    void sec12_unauthenticatedOccupy_ShouldReturn401() throws Exception {
+        mockMvc.perform(post("/v1/spots/occupy")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"vehicleType\":\"CAR\"}"))
+                .andExpect(status().isUnauthorized());
+    }
 }
