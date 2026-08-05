@@ -21,7 +21,7 @@ public class SecurityConfig {
 
     @Bean
     SecurityFilterChain filterChain(HttpSecurity http,
-                                    @Qualifier("handlerExceptionResolver") HandlerExceptionResolver resolver) throws Exception {
+                                    @Qualifier("handlerExceptionResolver") HandlerExceptionResolver resolver) {
         http
             .csrf(csrf -> csrf.disable())
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
