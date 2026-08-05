@@ -1,5 +1,87 @@
 
 
+# tartis-recon-ai-parking — spot-service
+
+## Responsabilidad del microservicio
+
+`spot-service` es el microservicio encargado de la gestión de plazas de aparcamiento y disponibilidad física del parking. Sus responsabilidades principales incluyen:
+- **Gestión del Catálogo de Plazas:** Control del inventario de plazas y su tipo de vehículo asignado (`CAR`, `CAR_PMR` o `MOTORBIKE`).
+- **Máquina de Estados de la Plaza (`SpotStatus`):**
+  - `AVAILABLE` -> `OCCUPIED` (ocupación atómica durante el check-in).
+  - `OCCUPIED` -> `AVAILABLE` (liberación atómica durante el check-out o asíncrona mediante eventos).
+  - `AVAILABLE` -> `UNAVAILABLE` (bloqueo por mantenimiento, según **RN-10**).
+  - `UNAVAILABLE` -> `AVAILABLE` (desbloqueo de mantenimiento).
+  - *Nota:* La transición `OCCUPIED` -> `UNAVAILABLE` está prohibida (devuelve HTTP 409): no se puede bloquear por mantenimiento una plaza con vehículo dentro.
+- **Ocupación Atómica:** Asignación atómica de plazas según **RN-01** y **RN-05** para evitar que dos entradas simultáneas ocupen la misma plaza.
+- **Procesamiento Asíncrono de Eventos:** Liberación automática de plazas al recibir eventos de cierre de estancia (`StayClosedEvent`) desde RabbitMQ.
+
+## Endpoints expuestos
+
+Todos los endpoints requieren autenticación mediante Bearer Token (Access Token emitido por Keycloak), exceptuando el endpoint público de salud.
+
+| Método | Endpoint | Descripción | Roles Autorizados |
+|---|---|---|---|
+| `GET` | `/v1/spots` | Listado completo de plazas y su estado actual | `ADMIN`, `OPERARIO` |
+| `POST` | `/v1/spots` | Crea una nueva plaza (nace en estado `AVAILABLE`) | `ADMIN` |
+| `GET` | `/v1/spots/{id}` | Obtiene el detalle de una plaza por su UUID | `ADMIN`, `OPERARIO` |
+| `PUT` | `/v1/spots/{id}` | Actualiza el tipo de vehículo permitido en la plaza | `ADMIN` |
+| `GET` | `/v1/spots/availability` | Consulta plazas libres por tipo de vehículo (RN-01) | `ADMIN`, `OPERARIO` |
+| `POST` | `/v1/spots/occupy` | Ocupa una plaza libre de forma atómica (`AVAILABLE` -> `OCCUPIED`) | `ADMIN`, `OPERARIO` |
+| `POST` | `/v1/spots/{id}/release` | Libera una plaza ocupada (`OCCUPIED` -> `AVAILABLE`) | `ADMIN`, `OPERARIO` |
+| `PATCH` | `/v1/spots/{id}/status` | Bloquea/desbloquea plaza por mantenimiento (`AVAILABLE` <-> `UNAVAILABLE`) | `ADMIN`, `OPERARIO` |
+| `GET` | `/actuator/health` | Probes de salud del servicio (Liveness / Readiness) | Público |
+
+## Eventos publicados y consumidos
+
+Este microservicio combina operaciones REST síncronas con consumo de eventos asíncronos en RabbitMQ.
+
+- **Eventos publicados en RabbitMQ:** Ninguno.
+- **Eventos consumidos de RabbitMQ:**
+  - **`StayClosedEvent`:** Escucha en la cola `spot-service-stay-closed-queue` (Exchange `stay.events`, routing key `stay.closed`). Al finalizar una estancia en `stay-service`, este servicio consume el evento para liberar la plaza asociada.
+  - **Idempotencia:** Si la plaza ya fue liberada previamente (`SpotNotOccupiedException`) o el evento es obsoleto (`SpotEventOutdatedException`), se captura el evento con log de advertencia y se marca como procesado (ACK) para evitar bucles de reintento.
+  - **Resiliencia & Dead Letter Queue (DLQ):** Reintentos automáticos con backoff exponencial (6 intentos). Mensajes fallidos persistentes se enrutan a la cola de mensajes muertos `spot-service-stay-closed-dlq`.
+
+## Variables de entorno
+
+| Variable | Descripción | Valor por defecto (Dev) | Perfil / Uso |
+|---|---|---|---|
+| `SPRING_PROFILES_ACTIVE` | Perfil activo de Spring Boot | `dev` | `dev` / `prod` |
+| `DB_HOST` | Host de la BD compartida de desarrollo | `localhost` | Dev |
+| `DB_PORT` | Puerto de la BD compartida | `5432` | Dev |
+| `DB_NAME` | Nombre de la BD de desarrollo | `parking_dev` | Dev |
+| `DB_USER` | Usuario de la BD de desarrollo | `parking_dev` | Dev |
+| `DB_PASSWORD` | Contraseña de la BD de desarrollo | `change.me` | Dev |
+| `SPOT_DB_HOST` | Host de la BD dedicada de plazas | — | Prod / Aislado |
+| `SPOT_DB_PORT` | Puerto de la BD dedicada de plazas | `5432` | Prod / Aislado |
+| `SPOT_DB_NAME` | Nombre de la BD dedicada | `spot_db` | Prod / Aislado |
+| `SPOT_DB_USER` | Usuario de la BD dedicada | — | Prod / Aislado |
+| `SPOT_DB_PASSWORD` | Contraseña de la BD dedicada | — | Prod / Aislado |
+| `RABBITMQ_HOST` | Host del broker RabbitMQ | `rabbitmq` | Dev / Prod |
+| `RABBITMQ_USER` | Usuario de autenticación RabbitMQ | `guest` | Dev / Prod |
+| `RABBITMQ_PASSWORD` | Contraseña de autenticación RabbitMQ | `guest` | Dev / Prod |
+| `KEYCLOAK_ISSUER_URI` | URI del emisor de Keycloak (Issuer URI) | `http://localhost:8180/realms/parking` | Dev / Prod |
+
+## Ejecución de forma aislada
+
+Para ejecutar y probar `spot-service` de forma independiente sin depender del resto de microservicios:
+
+1. **Opción 1: Entorno de Desarrollo (Perfil `dev`)**
+   Navegar a la carpeta del microservicio y arrancar con Maven:
+   ```bash
+   cd backend/spot-service
+   mvn spring-boot:run
+   ```
+   *El servicio se conectará al esquema `spot` del Postgres compartido.*
+
+2. **Opción 2: Base de Datos Dedicada (Perfil `prod` / Contenedores Aislados)**
+   Para ejecutar contra una base de datos PostgreSQL exclusiva en puerto `5434`:
+   ```bash
+   cd backend/spot-service
+   cp .env.example .env
+   docker compose up -d
+   mvn spring-boot:run -Dspring-boot.run.profiles=prod
+   ```
+
 ## Levantar el entorno local
 
 Lo más rápido: un script que hace todos los pasos de abajo y espera a que la BD esté lista.
