@@ -27,6 +27,11 @@ tags:
   - name: spots
     description: Spot catalogue, availability and occupancy
 
+# Todas las operaciones requieren token JWT (bearerAuth). Solo el health check
+# de actuator (/actuator/health) es publico, y no forma parte de este contrato.
+security:
+  - bearerAuth: []
+
 paths:
   /spots:
     get:
