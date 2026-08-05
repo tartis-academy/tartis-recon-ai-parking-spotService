@@ -1,6 +1,5 @@
 package com.tartis_recon_ai_parking.infrastructure.config;
 
-import com.tartis_recon_ai_parking.application.spot.port.output.SpotEventPublisher;
 import com.tartis_recon_ai_parking.application.spot.port.output.SpotPersistence;
 import com.tartis_recon_ai_parking.application.spot.usecase.AvailableSpotUseCase;
 import com.tartis_recon_ai_parking.application.spot.usecase.CreateSpotUseCase;
@@ -9,6 +8,7 @@ import com.tartis_recon_ai_parking.application.spot.usecase.UpdateSpotStatusUseC
 import com.tartis_recon_ai_parking.application.spot.usecase.UpdateSpotUseCase;
 import com.tartis_recon_ai_parking.application.spot.usecase.OccupySpotUseCase;
 import com.tartis_recon_ai_parking.application.spot.usecase.ReleaseSpotUseCase;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -31,18 +31,18 @@ public class BeanConfiguration {
     }
 
     @Bean
-    public UpdateSpotStatusUseCase updateSpotStatusUseCase(SpotPersistence spotPersistence, SpotEventPublisher eventPublisher) {
-        return new UpdateSpotStatusUseCase(spotPersistence, eventPublisher);
+    public UpdateSpotStatusUseCase updateSpotStatusUseCase(SpotPersistence spotPersistence, ApplicationEventPublisher applicationEventPublisher) {
+        return new UpdateSpotStatusUseCase(spotPersistence, applicationEventPublisher);
     }
 
     @Bean
-    public OccupySpotUseCase occupySpotUseCase(SpotPersistence spotPersistence, SpotEventPublisher eventPublisher) {
-        return new OccupySpotUseCase(spotPersistence, eventPublisher);
+    public OccupySpotUseCase occupySpotUseCase(SpotPersistence spotPersistence, ApplicationEventPublisher applicationEventPublisher) {
+        return new OccupySpotUseCase(spotPersistence, applicationEventPublisher);
     }
 
     @Bean
-    public ReleaseSpotUseCase releaseSpotUseCase(SpotPersistence spotPersistence, SpotEventPublisher eventPublisher) {
-        return new ReleaseSpotUseCase(spotPersistence, eventPublisher);
+    public ReleaseSpotUseCase releaseSpotUseCase(SpotPersistence spotPersistence, ApplicationEventPublisher applicationEventPublisher) {
+        return new ReleaseSpotUseCase(spotPersistence, applicationEventPublisher);
     }
 
     @Bean

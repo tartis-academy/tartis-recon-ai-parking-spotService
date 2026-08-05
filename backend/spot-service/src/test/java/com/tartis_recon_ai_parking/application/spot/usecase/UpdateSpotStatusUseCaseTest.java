@@ -2,9 +2,7 @@ package com.tartis_recon_ai_parking.application.spot.usecase;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -19,9 +17,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 import com.tartis_recon_ai_parking.application.spot.dto.SpotStatusChangedEvent;
-import com.tartis_recon_ai_parking.application.spot.port.output.SpotEventPublisher;
 import com.tartis_recon_ai_parking.application.spot.port.output.SpotPersistence;
 import com.tartis_recon_ai_parking.domain.spot.Spot;
 import com.tartis_recon_ai_parking.domain.spot.SpotStatus;
@@ -40,13 +38,13 @@ class UpdateSpotStatusUseCaseTest {
     private SpotPersistence spotPersistence;
 
     @Mock
-    private SpotEventPublisher eventPublisher;
+    private ApplicationEventPublisher applicationEventPublisher;
 
     private UpdateSpotStatusUseCase updateSpotStatusUseCase;
 
     @BeforeEach
     void setUp() {
-        updateSpotStatusUseCase = new UpdateSpotStatusUseCase(spotPersistence, eventPublisher);
+        updateSpotStatusUseCase = new UpdateSpotStatusUseCase(spotPersistence, applicationEventPublisher);
     }
 
     @Test
@@ -68,7 +66,7 @@ class UpdateSpotStatusUseCaseTest {
         verify(spotPersistence).save(spot);
 
         ArgumentCaptor<SpotStatusChangedEvent> eventCaptor = ArgumentCaptor.forClass(SpotStatusChangedEvent.class);
-        verify(eventPublisher).publish(eventCaptor.capture());
+        verify(applicationEventPublisher).publishEvent(eventCaptor.capture());
         assertThat(eventCaptor.getValue().data().status()).isEqualTo(SpotStatus.UNAVAILABLE);
     }
 
@@ -192,23 +190,6 @@ class UpdateSpotStatusUseCaseTest {
         assertThat(result.getStatus()).isEqualTo(SpotStatus.AVAILABLE);
         verify(spotPersistence, never()).save(any());
         // Si no hay cambio de estado, tampoco debe publicarse ningun evento.
-        verify(eventPublisher, never()).publish(any());
-    }
-
-    @Test
-    @DisplayName("Si publicar SpotStatusChangedEvent falla, se registra pero no se propaga: la plaza ya se bloqueo")
-    void execute_ShouldSwallowEventPublishFailure() {
-        UUID spotId = UUID.randomUUID();
-        Spot spot = Spot.reconstruct(spotId, VehicleType.CAR, SpotStatus.AVAILABLE);
-
-        when(spotPersistence.findById(spotId)).thenReturn(Optional.of(spot));
-        when(spotPersistence.save(any(Spot.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        doThrow(new IllegalStateException("rabbitmq no disponible"))
-                .when(eventPublisher).publish(any(SpotStatusChangedEvent.class));
-
-        Spot result = assertDoesNotThrow(() -> updateSpotStatusUseCase.execute(spotId, SpotStatus.UNAVAILABLE));
-
-        assertThat(result.getStatus()).isEqualTo(SpotStatus.UNAVAILABLE);
-        verify(eventPublisher).publish(any(SpotStatusChangedEvent.class));
+        verify(applicationEventPublisher, never()).publishEvent(any());
     }
 }

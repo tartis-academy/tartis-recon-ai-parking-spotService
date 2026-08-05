@@ -3,28 +3,24 @@ package com.tartis_recon_ai_parking.application.spot.usecase;
 import com.tartis_recon_ai_parking.application.spot.dto.SpotDTO;
 import com.tartis_recon_ai_parking.application.spot.dto.SpotStatusChangedEvent;
 import com.tartis_recon_ai_parking.application.spot.factory.SpotDTOFactory;
-import com.tartis_recon_ai_parking.application.spot.port.output.SpotEventPublisher;
 import com.tartis_recon_ai_parking.application.spot.port.output.SpotPersistence;
 import com.tartis_recon_ai_parking.domain.spot.Spot;
 import com.tartis_recon_ai_parking.domain.spot.exception.SpotEventOutdatedException;
 import com.tartis_recon_ai_parking.domain.spot.exception.SpotNotFoundException;
 import java.time.Instant;
 import java.util.UUID;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.transaction.annotation.Transactional;
 
 @Transactional
 public class ReleaseSpotUseCase {
 
-    private static final Logger log = LoggerFactory.getLogger(ReleaseSpotUseCase.class);
-
     private final SpotPersistence spotPersistence;
-    private final SpotEventPublisher eventPublisher;
+    private final ApplicationEventPublisher applicationEventPublisher;
 
-    public ReleaseSpotUseCase(SpotPersistence spotPersistence, SpotEventPublisher eventPublisher) {
+    public ReleaseSpotUseCase(SpotPersistence spotPersistence, ApplicationEventPublisher applicationEventPublisher) {
         this.spotPersistence = spotPersistence;
-        this.eventPublisher = eventPublisher;
+        this.applicationEventPublisher = applicationEventPublisher;
     }
 
     public SpotDTO execute(UUID id) {
@@ -53,15 +49,7 @@ public class ReleaseSpotUseCase {
         spot.release();
 
         Spot saved = spotPersistence.save(spot);
-        publishSpotStatusChangedEventQuietly(saved);
+        applicationEventPublisher.publishEvent(SpotStatusChangedEvent.of(saved, Instant.now()));
         return SpotDTOFactory.from(saved);
-    }
-
-    private void publishSpotStatusChangedEventQuietly(Spot spot) {
-        try {
-            eventPublisher.publish(SpotStatusChangedEvent.of(spot, Instant.now()));
-        } catch (RuntimeException e) {
-            log.error("No se pudo publicar el evento de cambio de estado para la plaza {}", spot.getId(), e);
-        }
     }
 }

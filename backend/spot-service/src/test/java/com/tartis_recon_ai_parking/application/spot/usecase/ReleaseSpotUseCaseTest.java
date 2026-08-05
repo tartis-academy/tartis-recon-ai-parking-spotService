@@ -1,11 +1,9 @@
 package com.tartis_recon_ai_parking.application.spot.usecase;
 
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -20,10 +18,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 import com.tartis_recon_ai_parking.application.spot.dto.SpotDTO;
 import com.tartis_recon_ai_parking.application.spot.dto.SpotStatusChangedEvent;
-import com.tartis_recon_ai_parking.application.spot.port.output.SpotEventPublisher;
 import com.tartis_recon_ai_parking.application.spot.port.output.SpotPersistence;
 import com.tartis_recon_ai_parking.domain.spot.Spot;
 import com.tartis_recon_ai_parking.domain.spot.SpotStatus;
@@ -38,13 +36,13 @@ public class ReleaseSpotUseCaseTest {
     private SpotPersistence spotPersistence;
 
     @Mock
-    private SpotEventPublisher eventPublisher;
+    private ApplicationEventPublisher applicationEventPublisher;
 
     private ReleaseSpotUseCase releaseSpotUseCase;
 
     @BeforeEach
     void setUp() {
-        releaseSpotUseCase = new ReleaseSpotUseCase(spotPersistence, eventPublisher);
+        releaseSpotUseCase = new ReleaseSpotUseCase(spotPersistence, applicationEventPublisher);
     }
 
     @Test
@@ -69,26 +67,9 @@ public class ReleaseSpotUseCaseTest {
         verify(spotPersistence).save(existingSpot);
 
         ArgumentCaptor<SpotStatusChangedEvent> eventCaptor = ArgumentCaptor.forClass(SpotStatusChangedEvent.class);
-        verify(eventPublisher).publish(eventCaptor.capture());
+        verify(applicationEventPublisher).publishEvent(eventCaptor.capture());
         assertEquals(spotId, eventCaptor.getValue().data().spotId());
         assertEquals(SpotStatus.AVAILABLE, eventCaptor.getValue().data().status());
-    }
-
-    @Test
-    @DisplayName("Si publicar SpotStatusChangedEvent falla, se registra pero no se propaga: la plaza ya se libero")
-    void execute_ShouldSwallowEventPublishFailure() {
-        UUID spotId = UUID.randomUUID();
-        Spot existingSpot = Spot.reconstruct(spotId, VehicleType.CAR, SpotStatus.OCCUPIED);
-
-        when(spotPersistence.findById(spotId)).thenReturn(Optional.of(existingSpot));
-        when(spotPersistence.save(any(Spot.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        doThrow(new IllegalStateException("rabbitmq no disponible"))
-                .when(eventPublisher).publish(any(SpotStatusChangedEvent.class));
-
-        SpotDTO result = assertDoesNotThrow(() -> releaseSpotUseCase.execute(spotId));
-
-        assertEquals(SpotStatus.AVAILABLE, result.getStatus());
-        verify(eventPublisher).publish(any(SpotStatusChangedEvent.class));
     }
 
     @Test
