@@ -15,10 +15,13 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 import com.tartis_recon_ai_parking.application.spot.dto.SpotDTO;
+import com.tartis_recon_ai_parking.application.spot.dto.SpotStatusChangedEvent;
 import com.tartis_recon_ai_parking.application.spot.port.output.SpotPersistence;
 import com.tartis_recon_ai_parking.domain.spot.Spot;
 import com.tartis_recon_ai_parking.domain.spot.SpotStatus;
@@ -32,11 +35,14 @@ public class ReleaseSpotUseCaseTest {
     @Mock
     private SpotPersistence spotPersistence;
 
+    @Mock
+    private ApplicationEventPublisher applicationEventPublisher;
+
     private ReleaseSpotUseCase releaseSpotUseCase;
 
     @BeforeEach
     void setUp() {
-        releaseSpotUseCase = new ReleaseSpotUseCase(spotPersistence);
+        releaseSpotUseCase = new ReleaseSpotUseCase(spotPersistence, applicationEventPublisher);
     }
 
     @Test
@@ -59,6 +65,11 @@ public class ReleaseSpotUseCaseTest {
         assertEquals(spotId, result.getId());
         assertEquals(SpotStatus.AVAILABLE, result.getStatus());
         verify(spotPersistence).save(existingSpot);
+
+        ArgumentCaptor<SpotStatusChangedEvent> eventCaptor = ArgumentCaptor.forClass(SpotStatusChangedEvent.class);
+        verify(applicationEventPublisher).publishEvent(eventCaptor.capture());
+        assertEquals(spotId, eventCaptor.getValue().data().spotId());
+        assertEquals(SpotStatus.AVAILABLE, eventCaptor.getValue().data().status());
     }
 
     @Test

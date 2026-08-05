@@ -14,9 +14,12 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
+import com.tartis_recon_ai_parking.application.spot.dto.SpotStatusChangedEvent;
 import com.tartis_recon_ai_parking.application.spot.port.output.SpotPersistence;
 import com.tartis_recon_ai_parking.domain.spot.Spot;
 import com.tartis_recon_ai_parking.domain.spot.SpotStatus;
@@ -34,11 +37,14 @@ class UpdateSpotStatusUseCaseTest {
     @Mock
     private SpotPersistence spotPersistence;
 
+    @Mock
+    private ApplicationEventPublisher applicationEventPublisher;
+
     private UpdateSpotStatusUseCase updateSpotStatusUseCase;
 
     @BeforeEach
     void setUp() {
-        updateSpotStatusUseCase = new UpdateSpotStatusUseCase(spotPersistence);
+        updateSpotStatusUseCase = new UpdateSpotStatusUseCase(spotPersistence, applicationEventPublisher);
     }
 
     @Test
@@ -58,6 +64,10 @@ class UpdateSpotStatusUseCaseTest {
         // Debe retornar la plaza en estado UNAVAILABLE y persistirla.
         assertThat(result.getStatus()).isEqualTo(SpotStatus.UNAVAILABLE);
         verify(spotPersistence).save(spot);
+
+        ArgumentCaptor<SpotStatusChangedEvent> eventCaptor = ArgumentCaptor.forClass(SpotStatusChangedEvent.class);
+        verify(applicationEventPublisher).publishEvent(eventCaptor.capture());
+        assertThat(eventCaptor.getValue().data().status()).isEqualTo(SpotStatus.UNAVAILABLE);
     }
 
     @Test
@@ -179,5 +189,7 @@ class UpdateSpotStatusUseCaseTest {
         // Debe mantener el estado AVAILABLE sin error y sin lanzar un UPDATE inutil.
         assertThat(result.getStatus()).isEqualTo(SpotStatus.AVAILABLE);
         verify(spotPersistence, never()).save(any());
+        // Si no hay cambio de estado, tampoco debe publicarse ningun evento.
+        verify(applicationEventPublisher, never()).publishEvent(any());
     }
 }

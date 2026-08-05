@@ -8,6 +8,7 @@ import com.tartis_recon_ai_parking.application.spot.usecase.UpdateSpotStatusUseC
 import com.tartis_recon_ai_parking.application.spot.usecase.UpdateSpotUseCase;
 import com.tartis_recon_ai_parking.application.spot.usecase.OccupySpotUseCase;
 import com.tartis_recon_ai_parking.application.spot.usecase.ReleaseSpotUseCase;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -30,18 +31,18 @@ public class BeanConfiguration {
     }
 
     @Bean
-    public UpdateSpotStatusUseCase updateSpotStatusUseCase(SpotPersistence spotPersistence) {
-        return new UpdateSpotStatusUseCase(spotPersistence);
+    public UpdateSpotStatusUseCase updateSpotStatusUseCase(SpotPersistence spotPersistence, ApplicationEventPublisher applicationEventPublisher) {
+        return new UpdateSpotStatusUseCase(spotPersistence, applicationEventPublisher);
     }
 
     @Bean
-    public OccupySpotUseCase occupySpotUseCase(SpotPersistence spotPersistence) {
-        return new OccupySpotUseCase(spotPersistence);
+    public OccupySpotUseCase occupySpotUseCase(SpotPersistence spotPersistence, ApplicationEventPublisher applicationEventPublisher) {
+        return new OccupySpotUseCase(spotPersistence, applicationEventPublisher);
     }
 
     @Bean
-    public ReleaseSpotUseCase releaseSpotUseCase(SpotPersistence spotPersistence) {
-        return new ReleaseSpotUseCase(spotPersistence);
+    public ReleaseSpotUseCase releaseSpotUseCase(SpotPersistence spotPersistence, ApplicationEventPublisher applicationEventPublisher) {
+        return new ReleaseSpotUseCase(spotPersistence, applicationEventPublisher);
     }
 
     @Bean

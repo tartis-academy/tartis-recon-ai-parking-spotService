@@ -7,6 +7,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import org.springframework.context.ApplicationEventPublisher;
+
 import com.tartis_recon_ai_parking.application.spot.port.output.SpotPersistence;
 import com.tartis_recon_ai_parking.application.spot.usecase.CreateSpotUseCase;
 import com.tartis_recon_ai_parking.application.spot.usecase.GetSpotUseCase;
@@ -20,11 +22,13 @@ class BeanConfigurationTest {
 
     private BeanConfiguration beanConfiguration;
     private SpotPersistence spotPersistence;
+    private ApplicationEventPublisher applicationEventPublisher;
 
     @BeforeEach
     void setUp() {
         beanConfiguration = new BeanConfiguration();
         spotPersistence = mock(SpotPersistence.class);
+        applicationEventPublisher = mock(ApplicationEventPublisher.class);
     }
 
     @Test
@@ -68,7 +72,7 @@ class BeanConfigurationTest {
     void shouldCreateUpdateSpotStatusUseCaseBean() {
         // QUE HACE:
         // Llama al metodo de configuracion que provee el bean UpdateSpotStatusUseCase.
-        UpdateSpotStatusUseCase useCase = beanConfiguration.updateSpotStatusUseCase(spotPersistence);
+        UpdateSpotStatusUseCase useCase = beanConfiguration.updateSpotStatusUseCase(spotPersistence, applicationEventPublisher);
 
         // QUE DEBERIA HACER:
         // El bean generado no debe ser nulo.
@@ -80,7 +84,7 @@ class BeanConfigurationTest {
     void shouldCreateOccupySpotUseCaseBean() {
         // QUE HACE:
         // Llama al metodo de configuracion que provee el bean OccupySpotUseCase.
-        OccupySpotUseCase useCase = beanConfiguration.occupySpotUseCase(spotPersistence);
+        OccupySpotUseCase useCase = beanConfiguration.occupySpotUseCase(spotPersistence, applicationEventPublisher);
 
         // QUE DEBERIA HACER:
         // El bean generado no debe ser nulo.
@@ -92,7 +96,7 @@ class BeanConfigurationTest {
     void shouldCreateReleaseSpotUseCaseBean() {
         // QUE HACE:
         // Llama al metodo de configuracion que provee el bean ReleaseSpotUseCase.
-        ReleaseSpotUseCase useCase = beanConfiguration.releaseSpotUseCase(spotPersistence);
+        ReleaseSpotUseCase useCase = beanConfiguration.releaseSpotUseCase(spotPersistence, applicationEventPublisher);
 
         // QUE DEBERIA HACER:
         // El bean generado no debe ser nulo.
