@@ -49,7 +49,7 @@ public class ReleaseSpotUseCase {
         spot.release();
 
         Spot saved = spotPersistence.save(spot);
-        applicationEventPublisher.publishEvent(SpotStatusChangedEvent.of(saved, Instant.now()));
+        applicationEventPublisher.publishEvent(SpotStatusChangedEvent.of(saved, saved.getLastStatusChangeAt()));
         return SpotDTOFactory.from(saved);
     }
 }

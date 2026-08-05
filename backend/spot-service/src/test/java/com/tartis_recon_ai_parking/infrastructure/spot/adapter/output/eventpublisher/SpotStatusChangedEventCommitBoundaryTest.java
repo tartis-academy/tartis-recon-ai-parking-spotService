@@ -4,6 +4,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,6 +20,7 @@ import com.tartis_recon_ai_parking.application.spot.usecase.OccupySpotUseCase;
 import com.tartis_recon_ai_parking.domain.spot.Spot;
 import com.tartis_recon_ai_parking.domain.spot.VehicleType;
 import com.tartis_recon_ai_parking.infrastructure.spot.adapter.input.eventlistener.SpotEventListenerAdapter;
+import com.tartis_recon_ai_parking.infrastructure.spot.adapter.output.persistence.SpotRepository;
 
 /**
  * Cubre la correccion de revision: el evento se publica dentro del
@@ -42,6 +44,17 @@ class SpotStatusChangedEventCommitBoundaryTest {
 
     @Autowired
     private SpotPersistence spotPersistence;
+
+    @Autowired
+    private SpotRepository spotRepository;
+
+    @AfterEach
+    void cleanUp() {
+        // shouldPublishEvent_WhenTransactionCommits hace un commit real sobre la
+        // H2 compartida (DB_CLOSE_DELAY=-1): sin este borrado, la plaza queda
+        // contaminando el resto de tests que corran en la misma JVM.
+        spotRepository.deleteAll();
+    }
 
     @Test
     @DisplayName("No debe publicarse ningun evento si la transaccion hace rollback")

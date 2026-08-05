@@ -31,7 +31,8 @@ public class SpotStatusChangedEventRelay {
         try {
             eventPublisher.publish(event);
         } catch (RuntimeException e) {
-            log.error("No se pudo publicar el evento de cambio de estado para la plaza {}", event.data().spotId(), e);
+            log.error("No se pudo publicar el evento {} de cambio de estado para la plaza {}",
+                    event.eventId(), event.data().spotId(), e);
         }
     }
 }

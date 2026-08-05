@@ -1,7 +1,5 @@
 package com.tartis_recon_ai_parking.application.spot.usecase;
 
-import java.time.Instant;
-
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,7 +29,7 @@ public class OccupySpotUseCase {
         Spot occupied = spotPersistence.findAndOccupyAvailableSpot(vehicleType)
                 .orElseThrow(() -> new NoAvailableSpotException(
                         "No hay plazas disponibles para el tipo " + vehicleType));
-        applicationEventPublisher.publishEvent(SpotStatusChangedEvent.of(occupied, Instant.now()));
+        applicationEventPublisher.publishEvent(SpotStatusChangedEvent.of(occupied, occupied.getLastStatusChangeAt()));
         return occupied;
     }
 }
