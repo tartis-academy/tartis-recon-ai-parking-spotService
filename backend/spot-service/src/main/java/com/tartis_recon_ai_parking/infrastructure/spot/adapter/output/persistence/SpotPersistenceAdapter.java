@@ -79,6 +79,15 @@ return repository.countByTypeAndStatus(type, status);
                     // que findFirstAvailable dejo bloqueada con
                     // PESSIMISTIC_WRITE), no sobre una copia.
                     //
+                    // Se vuelca con updateEntity y no campo a campo: occupy()
+                    // cambia el estado Y el lastStatusChangeAt, y copiar solo el
+                    // primero dejaba el segundo con el valor viejo en BD. Eso
+                    // desarmaba el guard de idempotencia de ReleaseSpotUseCase,
+                    // que compara el occurredAt del evento contra ese campo para
+                    // detectar que la plaza fue REASIGNADA: como ocupar no lo
+                    // movia, un StayClosedEvent reentregado por el broker
+                    // liberaba la plaza del nuevo inquilino (ASY-07).
+                    //
                     // Antes esto era repository.save(mapper.toEntity(spot)), y
                     // fallaba: el dominio Spot no lleva version, asi que
                     // toEntity() devuelve una instancia NUEVA con el mismo id y
@@ -95,7 +104,7 @@ return repository.countByTypeAndStatus(type, status);
                     // Mutando la gestionada, el dirty checking emite el UPDATE al
                     // hacer commit, la version sube sola y el bloqueo pesimista
                     // sigue cubriendo la seccion critica.
-                    entity.setStatus(spot.getStatus());
+                    mapper.updateEntity(entity, spot);
                     return mapper.toDomain(entity);
                 });
     }
