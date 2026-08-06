@@ -13,7 +13,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Resiliencia & Dead Letter Queue (DLQ):** Configuración de reintentos exponenciales (6 intentos) y enrutamiento automático a la cola de mensajes muertos `spot-service-stay-closed-dlq`.
 - **Integración con Keycloak & Spring Security:** OAuth2 Resource Server para validación de Bearer Access Tokens emitidos por Keycloak.
 - **Enrutamiento por API Gateway (Kong):** Enrutamiento centralizado y comprobación de seguridad en el perímetro vía Kong.
-- **Soporte para Plazas PMR:** Añadida la categoría `CAR_PMR` en el enum `VehicleType` y en la validación de plazas libres.
 - **Trazabilidad Distribuida & Logging (GW-06):** Inclusión de `CorrelationIdFilter`, `RequestIdentityFilter` y `RequestLoggingFilter` inyectando `correlationId`, `userName` y `clientId` en el MDC.
 - **Control de Concurrencia Optimista:** Migración Flyway añadiendo control de versión para evitar sobreescrituras en estados de plaza.
 
@@ -34,6 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - **MVP Inicial de `spot-service`:** Implementación inicial de la arquitectura hexagonal para la gestión de plazas.
+- **Soporte para Plazas PMR:** Integración de la categoría `CAR_PMR` en el enum `VehicleType` y en la reserva/validación de plazas libres.
 - **Endpoints REST Síncronos:**
   - `GET /v1/spots`: Listado de plazas.
   - `POST /v1/spots`: Creación de plaza (nace `AVAILABLE`).
