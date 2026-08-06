@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.jpa.test.autoconfigure.TestEntityManager;
 
+import java.time.Instant;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -46,10 +47,18 @@ class SpotPersistenceAdapterJpaTest {
     }
 
     private UUID givenSpotEnBd(VehicleType type, SpotStatus status) {
+        return givenSpotEnBd(type, status, null);
+    }
+
+    // Sobrecarga con lastStatusChangeAt explicito: los tests de ocupacion
+    // necesitan una fila con un instante ANTERIOR conocido para distinguir el
+    // valor persistido del que traia la fila al leerla.
+    private UUID givenSpotEnBd(VehicleType type, SpotStatus status, Instant lastStatusChangeAt) {
         SpotEntity entity = new SpotEntity();
         entity.setId(UUID.randomUUID());
         entity.setType(type);
         entity.setStatus(status);
+        entity.setLastStatusChangeAt(lastStatusChangeAt);
         entityManager.persistAndFlush(entity);
         entityManager.clear();
         return entity.getId();
@@ -135,5 +144,57 @@ class SpotPersistenceAdapterJpaTest {
         // QUE DEBERIA HACER:
         // El dirty checking sobre la entidad gestionada debe emitir el UPDATE.
         assertThat(adapter.findById(id).orElseThrow().getStatus()).isEqualTo(SpotStatus.OCCUPIED);
+    }
+
+    @Test
+    @DisplayName("findAndOccupyAvailableSpot debe persistir tambien el instante del cambio de estado")
+    void findAndOccupyAvailableSpot_ShouldPersistLastStatusChangeAt() {
+        // QUE HACE:
+        // - Cierra el hueco que dejaba el test de arriba: comprobaba el status y
+        //   solo el status, asi que pasaba en verde con occupy() volcando a la
+        //   entidad gestionada un unico campo de los dos que cambia.
+        //
+        // POR QUE IMPORTA:
+        // - ReleaseSpotUseCase compara el occurredAt del evento contra este
+        //   campo para descartar eventos anteriores a la ultima reasignacion. Si
+        //   ocupar no lo actualiza, la referencia se queda en la creacion de la
+        //   plaza o en su liberacion anterior, y el guard no puede detectar
+        //   nunca una reasignacion: un StayClosedEvent reentregado libera la
+        //   plaza del vehiculo que acaba de entrar (ASY-07).
+        Instant antesDeOcupar = Instant.now();
+        UUID id = givenSpotEnBd(VehicleType.CAR, SpotStatus.AVAILABLE);
+
+        assertThat(adapter.findAndOccupyAvailableSpot(VehicleType.CAR)).isPresent();
+        entityManager.flush();
+        entityManager.clear();
+
+        // QUE DEBERIA HACER:
+        // El UPDATE debe llevar el lastStatusChangeAt nuevo, no el que traia la
+        // fila al leerla.
+        assertThat(entityManager.find(SpotEntity.class, id).getLastStatusChangeAt())
+                .isNotNull()
+                .isAfterOrEqualTo(antesDeOcupar);
+    }
+
+    @Test
+    @DisplayName("findAndOccupyAvailableSpot debe devolver el instante nuevo, no el de la fila leida")
+    void findAndOccupyAvailableSpot_ShouldReturnFreshLastStatusChangeAt() {
+        // QUE HACE:
+        // - Cubre el valor que sale del metodo, no el que queda en BD.
+        //
+        // POR QUE IMPORTA:
+        // - OccupySpotUseCase publica SpotStatusChangedEvent.of(occupied,
+        //   occupied.getLastStatusChangeAt()) con la plaza que devuelve este
+        //   metodo. Un timestamp viejo aqui viaja al evento y llega asi a los
+        //   consumidores, que es justo lo que corrigio el fix de occurredAt de
+        //   SSE-06 en el otro extremo.
+        Instant creacion = Instant.now().minusSeconds(3600);
+        UUID id = givenSpotEnBd(VehicleType.CAR, SpotStatus.AVAILABLE, creacion);
+
+        Spot ocupada = adapter.findAndOccupyAvailableSpot(VehicleType.CAR).orElseThrow();
+
+        assertThat(ocupada.getId()).isEqualTo(id);
+        assertThat(ocupada.getStatus()).isEqualTo(SpotStatus.OCCUPIED);
+        assertThat(ocupada.getLastStatusChangeAt()).isAfter(creacion);
     }
 }

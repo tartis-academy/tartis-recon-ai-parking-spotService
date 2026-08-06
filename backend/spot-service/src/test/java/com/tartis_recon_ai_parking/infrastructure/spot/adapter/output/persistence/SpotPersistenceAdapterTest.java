@@ -309,7 +309,14 @@ class SpotPersistenceAdapterTest {
         // checking emita el UPDATE al hacer commit.
         assertThat(result).isPresent();
         assertThat(result.get().getStatus()).isEqualTo(SpotStatus.OCCUPIED);
-        assertThat(managedEntity.getStatus()).isEqualTo(SpotStatus.OCCUPIED);
+
+        // El volcado a la entidad gestionada se delega en updateEntity, que
+        // copia los DOS campos que mueve occupy() (status y lastStatusChangeAt).
+        // Con el mapper mockeado no se puede observar la mutacion en
+        // managedEntity, asi que se verifica la delegacion; que el volcado
+        // funcione de verdad lo cubre SpotPersistenceAdapterJpaTest contra un
+        // EntityManager real.
+        verify(spotPersistenceMapper).updateEntity(managedEntity, spot);
         verify(spotRepository).findFirstAvailable(VehicleType.CAR);
 
         // NO debe llamar a save() con una entidad remapeada. El dominio Spot no
