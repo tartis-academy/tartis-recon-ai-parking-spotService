@@ -5,7 +5,7 @@ All notable changes to the `spot-service` microservice will be documented in thi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.0.0] - 2026-08-04
+## [1.0.0] - 2026-08-06
 
 ### Added
 - **Consumo Asíncrono de Eventos de Cierre (`StayClosedEvent`):** Implementado `SpotEventListenerAdapter` con `@RabbitListener` escuchando en `spot-service-stay-closed-queue` para la liberación automática de plazas tras el check-out en `stay-service`.
@@ -30,7 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Protección con `@PreAuthorize`:** Control de acceso en controladores REST.
 - **Escaneo Continuo de Vulnerabilidades:** Pipeline CI/CD integrado con Trivy (`docker-scan`).
 
-## [1.0.0] - 2026-07-25
+## [0.5.0] - 2026-07-29
 
 ### Added
 - **MVP Inicial de `spot-service`:** Implementación inicial de la arquitectura hexagonal para la gestión de plazas.
@@ -44,5 +44,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Persistencia PostgreSQL:** Configuración JPA con esquema `spot`.
 - **Contrato OpenAPI:** Especificación en `openapi.yml`.
 
-[2.0.0]: https://github.com/tartis-academy/tartis-recon-ai-parking-spotService/compare/v1.0.0...v2.0.0
-[1.0.0]: https://github.com/tartis-academy/tartis-recon-ai-parking-spotService/releases/tag/v1.0.0
+[1.0.0]: https://github.com/tartis-academy/tartis-recon-ai-parking-spotService/compare/v0.5.0...v1.0.0
+[0.5.0]: https://github.com/tartis-academy/tartis-recon-ai-parking-spotService/releases/tag/v0.5.0
