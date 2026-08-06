@@ -2,6 +2,7 @@ package com.tartis_recon_ai_parking.application.spot.usecase;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.tartis_recon_ai_parking.application.spot.dto.SpotStatusChangedEvent;
 import com.tartis_recon_ai_parking.application.spot.port.output.SpotPersistence;
 import com.tartis_recon_ai_parking.domain.spot.Spot;
 import com.tartis_recon_ai_parking.domain.spot.SpotStatus;
@@ -10,14 +11,17 @@ import com.tartis_recon_ai_parking.domain.spot.exception.NoAvailableSpotExceptio
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -26,6 +30,9 @@ class OccupySpotUseCaseTest {
 
     @Mock
     private SpotPersistence spotPersistence;
+
+    @Mock
+    private ApplicationEventPublisher applicationEventPublisher;
 
     @InjectMocks
     private OccupySpotUseCase occupySpotUseCase;
@@ -48,6 +55,14 @@ class OccupySpotUseCaseTest {
         // Debe retornar la plaza en estado OCCUPIED.
         assertThat(result).isNotNull();
         assertThat(result.getStatus()).isEqualTo(SpotStatus.OCCUPIED);
+
+        ArgumentCaptor<SpotStatusChangedEvent> eventCaptor = ArgumentCaptor.forClass(SpotStatusChangedEvent.class);
+        verify(applicationEventPublisher).publishEvent(eventCaptor.capture());
+        SpotStatusChangedEvent published = eventCaptor.getValue();
+
+        assertThat(published.type()).isEqualTo("SpotStatusChangedEvent");
+        assertThat(published.data().spotId()).isEqualTo(spotId);
+        assertThat(published.data().status()).isEqualTo(SpotStatus.OCCUPIED);
     }
 
     @Test
