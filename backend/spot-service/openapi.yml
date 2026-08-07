@@ -16,7 +16,7 @@ info:
       UNAVAILABLE -> AVAILABLE     (maintenance release)
     OCCUPIED -> UNAVAILABLE is FORBIDDEN: a spot with a vehicle inside cannot be
     blocked for maintenance (returns 409).
-  version: 1.0.0
+  version: 1.1.0
   contact:
     name: TARTIS Recon-AI - Team Parking
 
